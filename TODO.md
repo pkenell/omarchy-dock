@@ -9,7 +9,7 @@ Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-d
 
 - #1 ~~Inställningspanel~~ (klart)
 - #2 ~~Ikonbytardialogen visar få förhandsvisningar~~ (klart)
-- #3 Docken ryckte vid första ikonen
+- #3 ~~Docken ryckte vid första ikonen~~ (borta efter ändrade klickytor, öppna igen om den återkommer)
 - #4 ~~`saveSettings()` skriver över `dock-settings.json`~~ (klart)
 - #5 Första-parts-dockens lager överlappar
 - #6 ~~Sidodockor: träffyta högre än platsen~~ (klart)
