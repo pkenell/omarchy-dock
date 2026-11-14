@@ -46,7 +46,7 @@ Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-d
 
 - [ ] PR #28 (papperskorgen) väntar på granskning:
   https://github.com/ifubaraboye/omarchy-dock/pull/28
-- [ ] **PR uppströms för ikonbytaren** (förhandsvisningarna, issue #2). Skapa en ny
+- [x] **PR uppströms för ikonbytaren** (klart: PR #29, väntar på granskning) (förhandsvisningarna, issue #2). Skapa en ny
   branch från `upstream/main`, hämta bara ändringen i `IconPickerPanel.qml`
   (`git cherry-pick` av fixen, commit `22e3f82`), kontrollera att den går att tillämpa
   utan våra andra ändringar, och öppna PR mot `ifubaraboye/omarchy-dock`. Beskriv
