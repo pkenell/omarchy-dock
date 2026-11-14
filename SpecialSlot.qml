@@ -38,6 +38,7 @@ Item {
     // Only the icon reacts to the pointer. On a side dock the area also spans
     // the gap to the neighbors (pitch = slot + spacing), so there are no dead
     // strips between icons where the magnification would flicker off.
+    hoverLift: dock.hoverEffect === "lift" && dock.hoveredItemId === specialId ? dock.liftHeight : 0
     hitTop: dock.vertical ? -Math.round((dock.effSlotWidth + dock.slotSpacing - dock.iconSize) / 2) : 0
     hitHeight: dock.vertical ? dock.effSlotWidth + dock.slotSpacing : dock.iconSize
     anchors.centerIn: parent

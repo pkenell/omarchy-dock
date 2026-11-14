@@ -25,7 +25,9 @@ var LAYOUT_OPTS = {
     // Dock background: 0 = fully transparent, 1 = solid.
     backgroundOpacity: 0.5,
     // Extra pill height on top of the icon size (half above, half below).
-    dockPadding: 22
+    dockPadding: 22,
+    // "magnify" (macOS wave), "lift" (only the hovered icon rises) or "none".
+    hoverEffect: "magnify"
 }
 
 function clampNumber(value, min, max, fallback) {
@@ -490,6 +492,11 @@ function normalizeSide(side) {
     return "bottom"
 }
 
+function normalizeHoverEffect(value) {
+    var v = String(value || "").toLowerCase()
+    return v === "lift" || v === "none" ? v : "magnify"
+}
+
 function flagSetting(value, fallback) {
     if (typeof value === "boolean") return value
     if (typeof value === "string") return value === "true"
@@ -520,7 +527,9 @@ function parseSettings(text, fallback) {
         iconSize: clampNumber(defaults.iconSize, 16, 128, LAYOUT_OPTS.iconSize),
         hoverScale: clampNumber(defaults.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale),
         backgroundOpacity: clampNumber(defaults.backgroundOpacity, 0, 1, LAYOUT_OPTS.backgroundOpacity),
-        dockPadding: clampNumber(defaults.dockPadding, 8, 48, LAYOUT_OPTS.dockPadding)
+        dockPadding: clampNumber(defaults.dockPadding, 8, 48, LAYOUT_OPTS.dockPadding),
+        hoverEffect: normalizeHoverEffect(defaults.hoverEffect),
+        magnifyReach: clampNumber(defaults.magnifyReach, 40, 240, LAYOUT_OPTS.radius)
     }
     var source = String(text || "").trim()
     if (!source) return base
@@ -537,10 +546,14 @@ function parseSettings(text, fallback) {
             iconSize: base.iconSize,
             hoverScale: base.hoverScale,
             backgroundOpacity: base.backgroundOpacity,
-            dockPadding: base.dockPadding
+            dockPadding: base.dockPadding,
+            hoverEffect: base.hoverEffect,
+            magnifyReach: base.magnifyReach
         }
         if (parsed.iconSize !== undefined) out.iconSize = clampNumber(parsed.iconSize, 16, 128, base.iconSize)
         if (parsed.hoverScale !== undefined) out.hoverScale = clampNumber(parsed.hoverScale, 1, 3, base.hoverScale)
+        if (parsed.hoverEffect !== undefined) out.hoverEffect = normalizeHoverEffect(parsed.hoverEffect)
+        if (parsed.magnifyReach !== undefined) out.magnifyReach = clampNumber(parsed.magnifyReach, 40, 240, base.magnifyReach)
         if (parsed.dockPadding !== undefined) out.dockPadding = clampNumber(parsed.dockPadding, 8, 48, base.dockPadding)
         if (parsed.backgroundOpacity !== undefined) out.backgroundOpacity = clampNumber(parsed.backgroundOpacity, 0, 1, base.backgroundOpacity)
         if (typeof parsed.autoHide === "boolean") out.autoHide = parsed.autoHide
@@ -577,6 +590,8 @@ function serializeSettings(settings, existing) {
     kept.showTrash = showTrash
     kept.iconSize = clampNumber(settings && settings.iconSize, 16, 128, LAYOUT_OPTS.iconSize)
     kept.hoverScale = clampNumber(settings && settings.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
+    kept.hoverEffect = normalizeHoverEffect(settings && settings.hoverEffect)
+    kept.magnifyReach = clampNumber(settings && settings.magnifyReach, 40, 240, LAYOUT_OPTS.radius)
     kept.dockPadding = clampNumber(settings && settings.dockPadding, 8, 48, LAYOUT_OPTS.dockPadding)
     kept.backgroundOpacity = clampNumber(settings && settings.backgroundOpacity, 0, 1, LAYOUT_OPTS.backgroundOpacity)
     return JSON.stringify(kept, null, 2) + "\n"
@@ -691,6 +706,7 @@ if (typeof module !== "undefined" && module.exports) {
         parseSettings: parseSettings,
         serializeSettings: serializeSettings,
         normalizeSide: normalizeSide,
+        normalizeHoverEffect: normalizeHoverEffect,
         normalizeScreenMode: normalizeScreenMode,
         resolveScreenNames: resolveScreenNames,
         surfaceFor: surfaceFor,

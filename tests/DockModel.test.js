@@ -607,3 +607,18 @@ test("dockPadding defaults to 22, is clamped and round-trips", () => {
   assert.equal(JSON.parse(model.serializeSettings({ dockPadding: 14 })).dockPadding, 14)
   assert.equal(JSON.parse(model.serializeSettings({})).dockPadding, 22)
 })
+
+test("hoverEffect and magnifyReach: defaults, normalization, clamping, round trip", () => {
+  const d = model.parseSettings("{}", {})
+  assert.equal(d.hoverEffect, "magnify")
+  assert.equal(d.magnifyReach, 96)
+  assert.equal(model.parseSettings('{"hoverEffect":"lift"}', {}).hoverEffect, "lift")
+  assert.equal(model.parseSettings('{"hoverEffect":"NONE"}', {}).hoverEffect, "none")
+  assert.equal(model.parseSettings('{"hoverEffect":"spin"}', {}).hoverEffect, "magnify")
+  assert.equal(model.parseSettings('{"magnifyReach":10}', {}).magnifyReach, 40)
+  assert.equal(model.parseSettings('{"magnifyReach":999}', {}).magnifyReach, 240)
+  const out = JSON.parse(model.serializeSettings({ hoverEffect: "lift", magnifyReach: 120 }))
+  assert.equal(out.hoverEffect, "lift")
+  assert.equal(out.magnifyReach, 120)
+  assert.equal(JSON.parse(model.serializeSettings({})).hoverEffect, "magnify")
+})

@@ -282,6 +282,9 @@ Item {
   property int iconSize: DockModel.LAYOUT_OPTS.iconSize
   property real hoverScale: DockModel.LAYOUT_OPTS.hoverScale
   property real backgroundOpacity: DockModel.LAYOUT_OPTS.backgroundOpacity
+  property string hoverEffect: DockModel.LAYOUT_OPTS.hoverEffect
+  // How far an icon rises in "lift" mode.
+  readonly property int liftHeight: Math.round(root.iconSize * 0.3)
   property bool settingsOpen: false
   property int magnifyReach: DockModel.LAYOUT_OPTS.radius
   // 0..1, animated: how much of the pointer magnification is applied. The
@@ -302,12 +305,13 @@ Item {
   // On a side dock the row runs vertically, so each icon needs room for its
   // running-dot below it along that axis.
   readonly property int effSlotWidth: root.vertical ? Math.max(root.slotWidth, root.iconSize + 10) : Math.max(root.slotWidth, root.iconSize + 2)
-  readonly property real magnifyHeadroom: (root.autoHide && root.autoHidden) ? 0 : Math.ceil(root.iconSize * (root.hoverScale - 1)) + 6
+  readonly property real magnifyHeadroom: (root.autoHide && root.autoHidden) ? 0 : (root.hoverEffect === "magnify" ? Math.ceil(root.iconSize * (root.hoverScale - 1)) : root.hoverEffect === "lift" ? root.liftHeight : 0) + 6
   readonly property var layoutOpts: ({
     slotWidth: root.effSlotWidth,
     spacing: root.slotSpacing,
     iconSize: root.iconSize,
-    hoverScale: root.hoverScale,
+    // Only the wave effect scales icons; "lift" and "none" keep the row still.
+    hoverScale: root.hoverEffect === "magnify" ? root.hoverScale : 1,
     radius: root.magnifyReach,
     sidePadding: root.sidePadding,
     separatorWidth: root.separatorWidth,
@@ -486,7 +490,9 @@ Item {
       iconSize: root.iconSize,
       hoverScale: root.hoverScale,
       backgroundOpacity: root.backgroundOpacity,
-      dockPadding: root.dockPadding
+      dockPadding: root.dockPadding,
+      hoverEffect: root.hoverEffect,
+      magnifyReach: root.magnifyReach
     }, settingsFile.text())
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
@@ -510,6 +516,8 @@ Item {
   onShowTrashChanged: root.applyLayout()
   onIconSizeChanged: root.applyLayout()
   onHoverScaleChanged: root.applyLayout()
+  onMagnifyReachChanged: root.applyLayout()
+  onHoverEffectChanged: root.applyLayout()
   onScreenModeChanged: {
     root.pruneOutputs()
     root.saveSettings()
@@ -1244,6 +1252,8 @@ Item {
     root.hoverScale = DockModel.LAYOUT_OPTS.hoverScale
     root.backgroundOpacity = DockModel.LAYOUT_OPTS.backgroundOpacity
     root.dockPadding = DockModel.LAYOUT_OPTS.dockPadding
+    root.hoverEffect = DockModel.LAYOUT_OPTS.hoverEffect
+    root.magnifyReach = DockModel.LAYOUT_OPTS.radius
     root.saveSettings()
   }
 
@@ -1833,7 +1843,9 @@ Item {
         autoHide: true, dockSide: "bottom", screenMode: "all", showDownloads: true, showTrash: true,
         iconSize: DockModel.LAYOUT_OPTS.iconSize, hoverScale: DockModel.LAYOUT_OPTS.hoverScale,
         backgroundOpacity: DockModel.LAYOUT_OPTS.backgroundOpacity,
-        dockPadding: DockModel.LAYOUT_OPTS.dockPadding
+        dockPadding: DockModel.LAYOUT_OPTS.dockPadding,
+        hoverEffect: DockModel.LAYOUT_OPTS.hoverEffect,
+        magnifyReach: DockModel.LAYOUT_OPTS.radius
       })
       if (!root.settingsLoaded) {
         root.settingsLoaded = true
@@ -1850,6 +1862,8 @@ Item {
       root.hoverScale = parsed.hoverScale
       root.backgroundOpacity = parsed.backgroundOpacity
       root.dockPadding = parsed.dockPadding
+      root.hoverEffect = parsed.hoverEffect
+      root.magnifyReach = parsed.magnifyReach
       if (root.dockSide !== parsed.dockSide) root.dockSide = parsed.dockSide
       if (root.screenMode !== parsed.screenMode) root.screenMode = parsed.screenMode
       // If auto-hide is turned off, ensure the dock is fully revealed.
@@ -1870,6 +1884,8 @@ Item {
       root.hoverScale = DockModel.LAYOUT_OPTS.hoverScale
       root.backgroundOpacity = DockModel.LAYOUT_OPTS.backgroundOpacity
       root.dockPadding = DockModel.LAYOUT_OPTS.dockPadding
+      root.hoverEffect = DockModel.LAYOUT_OPTS.hoverEffect
+      root.magnifyReach = DockModel.LAYOUT_OPTS.radius
     }
   }
 
