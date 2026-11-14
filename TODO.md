@@ -5,6 +5,18 @@ inställningar, papperskorgen, uppdelning av `DockPanelBase.qml`).
 
 ## Fel och risker
 
+- [ ] **Docken "ryckte" vid första ikonen.** När pekaren hovrar strax till vänster
+  om mitten av den första ikonen på en dock börjar hela docken vibrera ett par
+  pixlar fram och tillbaka. Det syns inte på de andra ikonerna. Ej reproducerat
+  än. Min gissning: återkoppling vid träffytans kant. Den första ikonen
+  växer och flyttar sig åt vänster (raden centreras om symmetriskt), så pekaren
+  hamnar växelvis innanför och utanför ikonens `MouseArea`. Varje in- och
+  utträde kör `hoverPointerChanged` och `applyLayout()` på nytt. Möjlig åtgärd:
+  låt en `MouseArea` på hela raden, i den fasta viloramen, avgöra vilken ikon som
+  hovras (`slotIndexAt`) och driva tooltip och förstoring därifrån, så att
+  hovringen inte beror på ikonernas animerade geometri. Börja med att
+  logga `hoveredItemId` och `hoveredMouseX` per bildruta och se om `itemId`
+  växlar.
 - [ ] **`saveSettings()` skriver över hela `dock-settings.json`.** `serializeSettings`
   skriver bara dockens egna nycklar. Filen delas med andra Omarchy-dockar
   (`~/.config/omarchy/dock-settings.json` har till exempel `dockEnabled`,
@@ -20,6 +32,17 @@ inställningar, papperskorgen, uppdelning av `DockPanelBase.qml`).
 
 ## Förbättringar
 
+- [ ] **Inställningspanel från högerklickmenyn** (ny rad, till exempel
+  "Dockinställningar…" under Dock-raden) där man ställer in:
+  - ikonstorlek (`iconSize`, finns redan som nyckel i `dock-settings.json`)
+  - hovringsgrad (`hoverScale`, finns redan; 1 = ingen förstoring)
+  - bakgrund: solid eller genomskinlig, och hur genomskinlig. Idag är pillret
+    hårdkodat till `Util.alpha(Color.background, 0.50)` i `DockWindow.qml`. Lägg
+    till en nyckel som `backgroundOpacity` (0–1, där 1 = solid).
+  Skriv direkt till skalet vid reglaget (live-förhandsvisning) och spara i
+  `dock-settings.json`. Gör den som en liten `PanelWindow` med samma stil som
+  menyn. Gör först punkten om att `saveSettings()` skriver över hela filen, annars
+  riskerar fler nycklar att skriva över andra dockars inställningar.
 - [ ] `hoverEffect: "magnify" | "lift" | "none"` (från ursprungsplanen) och
   `magnifyReach` som inställning. Idag finns bara `iconSize` och `hoverScale`.
 - [ ] Ta bort död kod i `DockItem.qml`: `y: -targetLift`, dess `Behavior` och
