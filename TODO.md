@@ -12,7 +12,8 @@ Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-d
 - #3 Docken ryckte vid första ikonen
 - #4 ~~`saveSettings()` skriver över `dock-settings.json`~~ (klart)
 - #5 Första-parts-dockens lager överlappar
-- #6 Sidodockor: träffyta högre än platsen
+- #6 ~~Sidodockor: träffyta högre än platsen~~ (klart)
+- #7 Sidodock: docken rycker till vid avskiljaren (hänger ihop med #3)
 
 ## Förbättringar
 
