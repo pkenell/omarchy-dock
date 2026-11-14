@@ -904,7 +904,7 @@ Item {
     var cached = root.visualCache[id]
     if (cached) return cached
     var p = root.placements[id]
-    return { x: p ? p.x : 0, scale: p ? p.scale : 1, lift: p ? p.lift : 0 }
+    return { x: p ? p.x : 0, scale: p ? p.scale : 1 }
   }
 
   function fullFlowFor(order, floatingId, phantomIndex) {
@@ -948,7 +948,6 @@ Item {
         var d = list[i]
         d.x = p.x
         d.targetScale = p.scale
-        d.targetLift = 0
         d.targetOpacity = (id === root.floatingId) ? 0.01 : (p.phantom ? 0.45 : 1)
       }
     }

@@ -16,7 +16,6 @@ Item {
   x: 0
   property bool animating: false
   property real targetScale: 1
-  property real targetLift: 0
   property real targetOpacity: 1
   Behavior on x {
     enabled: separatorItem.animating && dock.layoutTransition && Style.duration(1) > 0

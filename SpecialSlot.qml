@@ -19,7 +19,6 @@ Item {
   rotation: dock.vertical ? -90 : 0
   property bool animating: false
   property alias targetScale: specialItem.targetScale
-  property alias targetLift: specialItem.targetLift
   property alias targetOpacity: specialItem.targetOpacity
   Behavior on x {
     enabled: specialWrapper.animating && dock.layoutTransition && Style.duration(1) > 0
@@ -30,7 +29,6 @@ Item {
     var seed = dock.seedFor(specialId)
     x = seed.x
     targetScale = seed.scale
-    targetLift = seed.lift
     animating = true
   }
   Component.onDestruction: dock.unregisterItem(specialId, specialWrapper)

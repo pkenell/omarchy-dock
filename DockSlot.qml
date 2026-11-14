@@ -39,7 +39,6 @@ Item {
   })
 
   property alias targetScale: dockItem.targetScale
-  property alias targetLift: dockItem.targetLift
   property alias targetOpacity: dockItem.targetOpacity
   property alias bounceOffset: dockItem.bounceOffset
   function playBounce() { return dockItem.playLaunchBounce() }
@@ -55,7 +54,6 @@ Item {
     var seed = dock.seedFor(modelData)
     x = seed.x
     targetScale = seed.scale
-    targetLift = seed.lift
     targetOpacity = (modelData === dock.floatingId) ? 0.01 : 1
     animating = true
     // Newly appearing launched app: the bounce intent was recorded
@@ -64,7 +62,7 @@ Item {
       dock.finishLaunchBounce(modelData)
   }
   Component.onDestruction: {
-    dock.visualCache[modelData] = { x: x, scale: targetScale, lift: targetLift }
+    dock.visualCache[modelData] = { x: x, scale: targetScale }
     dock.unregisterItem(modelData, wrapper)
   }
 
