@@ -98,13 +98,73 @@ PanelWindow {
         onReleased: root.dock.saveSettings()
       }
 
+      Column {
+        width: content.width
+        spacing: 6
+        Text {
+          x: 2
+          textFormat: Text.PlainText
+          text: strings.t("settings.hoverEffect")
+          color: Color.foreground
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+        }
+        Row {
+          spacing: 6
+          Repeater {
+            model: [
+              { value: "magnify", label: strings.t("settings.effectMagnify") },
+              { value: "lift", label: strings.t("settings.effectLift") },
+              { value: "none", label: strings.t("settings.effectNone") }
+            ]
+            delegate: Rectangle {
+              required property var modelData
+              readonly property bool selected: root.dock && root.dock.hoverEffect === modelData.value
+              width: (content.width - 12) / 3
+              height: 28
+              radius: 7
+              color: selected ? Util.alpha(Color.accent, 0.35)
+                   : choiceMouse.containsMouse ? Util.alpha(Color.accent, 0.18) : Util.alpha(Color.foreground, 0.08)
+              border.width: selected ? 1 : 0
+              border.color: Color.accent
+              Text {
+                anchors.centerIn: parent
+                textFormat: Text.PlainText
+                text: parent.modelData.label
+                color: Color.foreground
+                font.family: Style.font.family
+                font.pixelSize: Style.font.body
+              }
+              MouseArea {
+                id: choiceMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: { root.dock.hoverEffect = parent.modelData.value; root.dock.saveSettings() }
+              }
+            }
+          }
+        }
+      }
+
       SettingSlider {
         width: content.width
+        visible: root.dock && root.dock.hoverEffect === "magnify"
         label: strings.t("settings.hoverScale")
         valueText: !root.dock ? "" : (root.dock.hoverScale <= 1.001 ? strings.t("settings.hoverOff") : "×" + root.dock.hoverScale.toFixed(2))
         from: 1; to: 2.5; stepSize: 0.05
         value: root.dock ? root.dock.hoverScale : 1.5
         onMoved: function(v) { root.dock.hoverScale = v }
+        onReleased: root.dock.saveSettings()
+      }
+
+      SettingSlider {
+        width: content.width
+        visible: root.dock && root.dock.hoverEffect === "magnify"
+        label: strings.t("settings.magnifyReach")
+        valueText: root.dock ? root.dock.magnifyReach + " px" : ""
+        from: 40; to: 240; stepSize: 8
+        value: root.dock ? root.dock.magnifyReach : 96
+        onMoved: function(v) { root.dock.magnifyReach = Math.round(v) }
         onReleased: root.dock.saveSettings()
       }
 

@@ -11,6 +11,9 @@ Item {
   // Pointer-sensitive area along the icon's height, measured from the top of
   // the icon: just the icon, not the running-dot area below it. A side dock
   // widens it to the icon's slot so there are no dead gaps between icons.
+  // How far the icon is raised in "lift" mode (away from the dock edge).
+  property real hoverLift: 0
+  Behavior on hoverLift { NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic } }
   property real hitTop: 0
   property real hitHeight: iconSize
   property string dockSide: "bottom"
@@ -71,7 +74,8 @@ Item {
   // verticalCenterOffset. bounceOffset is negative-up, matching macOS motion.
   // The icon sits at the top of the box with the running dot below it, so on a
   // bottom dock the box is shifted down by half the dot area to center the icon.
-  anchors.verticalCenterOffset: root.bounceOffset + (root.sideDock ? 0 : Math.round((root.height - root.iconSize) / 2))
+  anchors.verticalCenterOffset: root.bounceOffset + (root.sideDock ? 0 : Math.round((root.height - root.iconSize) / 2) - root.hoverLift)
+  anchors.horizontalCenterOffset: root.dockSide === "left" ? root.hoverLift : root.dockSide === "right" ? -root.hoverLift : 0
 
   Behavior on opacity {
     enabled: root.animationEnabled
@@ -142,9 +146,11 @@ Item {
 
   MouseArea {
     id: mouse
-    anchors.left: parent.left
-    anchors.right: parent.right
-    y: root.hitTop
+    // The pointer area stays put while the icon lifts, otherwise the icon would
+    // rise out from under the pointer and drop again (flicker).
+    x: root.dockSide === "left" ? -root.hoverLift : root.dockSide === "right" ? root.hoverLift : 0
+    width: parent.width
+    y: root.hitTop + (root.sideDock ? 0 : root.hoverLift)
     height: root.hitHeight
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     hoverEnabled: true
