@@ -3,54 +3,16 @@
 Kvarvarande punkter efter sessionen 2026-11-14 (hovring, dra och släpp, ny meny,
 inställningar, papperskorgen, uppdelning av `DockPanelBase.qml`).
 
-## Nästa: inställningspanel
+## Issues
 
-- [ ] **Inställningspanel från högerklickmenyn** (ny rad, till exempel
-  "Dockinställningar…" under Dock-raden) där man ställer in:
-  - ikonstorlek (`iconSize`, finns redan som nyckel i `dock-settings.json`)
-  - hovringsgrad (`hoverScale`, finns redan; 1 = ingen förstoring)
-  - bakgrund: solid eller genomskinlig, och hur genomskinlig. Idag är pillret
-    hårdkodat till `Util.alpha(Color.background, 0.50)` i `DockWindow.qml`. Lägg
-    till en nyckel som `backgroundOpacity` (0–1, där 1 = solid).
-  Skriv direkt till skalet vid reglaget (live-förhandsvisning) och spara i
-  `dock-settings.json`. Gör den som en liten `PanelWindow` med samma stil som
-  menyn. Gör först punkten om att `saveSettings()` skriver över hela filen, annars
-  riskerar fler nycklar att skriva över andra dockars inställningar.
+Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-dock/issues:
 
-## Fel och risker
-
-- [ ] **Ikonbytardialogen visar bara få förhandsvisningar (oftast en).** I
-  "Byt ikon…" visas bara ett fåtal ikoner i rutnätet, ofta bara en, trots att
-  sökningen säger "23 icons found". Övriga rutor är tomma. Gäller alla appar, inte
-  bara Claude. Gissning: ikonerna hämtas/laddas lazy eller asynkront (nätverk eller
-  cache) och bilderna visas aldrig, eller så begränsas antalet samtidiga
-  nedladdningar/delegater. Börja i `DockMenu.qml`/`DockPanelBase.qml`
-  (`picker.*`, ikonsökning mot macOSicons): logga laddningsstatus per bild och
-  kontrollera om `Image.status` fastnar på `Loading` eller `Error`.
-- [ ] **Docken "ryckte" vid första ikonen.** När pekaren hovrar strax till vänster
-  om mitten av den första ikonen på en dock börjar hela docken vibrera ett par
-  pixlar fram och tillbaka. Det syns inte på de andra ikonerna. Ej reproducerat
-  än. Min gissning: återkoppling vid träffytans kant. Den första ikonen
-  växer och flyttar sig åt vänster (raden centreras om symmetriskt), så pekaren
-  hamnar växelvis innanför och utanför ikonens `MouseArea`. Varje in- och
-  utträde kör `hoverPointerChanged` och `applyLayout()` på nytt. Möjlig åtgärd:
-  låt en `MouseArea` på hela raden, i den fasta viloramen, avgöra vilken ikon som
-  hovras (`slotIndexAt`) och driva tooltip och förstoring därifrån, så att
-  hovringen inte beror på ikonernas animerade geometri. Börja med att
-  logga `hoveredItemId` och `hoveredMouseX` per bildruta och se om `itemId`
-  växlar.
-- [ ] **`saveSettings()` skriver över hela `dock-settings.json`.** `serializeSettings`
-  skriver bara dockens egna nycklar. Filen delas med andra Omarchy-dockar
-  (`~/.config/omarchy/dock-settings.json` har till exempel `dockEnabled`,
-  `widgetsEnabled`, `dockWidgets`). Läs in den befintliga filen och slå ihop
-  nycklarna i stället för att ersätta den. Kontrollera först om det redan hänt.
-- [ ] **Första-parts-dockens lager (`omarchy-dock`, ca 207 px högt längst ned)**
-  överlappar vår dock på båda skärmarna. Kolla om det stjäl pekaren över de
-  nedersta pixlarna eller stör kantzonen.
-- [ ] **Sidodockor:** avståndet längs sidan är en tumregel (`effSlotWidth =
-  max(slotWidth, iconSize + 10)`). Träffytan i `DockItem` är högre än platsen
-  (`iconSize + 18`), så grannarna överlappar lite. Gör träffytan lika hög som
-  platsen, eller räkna ut höjden från prickens storlek.
+- #1 Inställningspanel (gör först #4)
+- #2 Ikonbytardialogen visar få förhandsvisningar
+- #3 Docken ryckte vid första ikonen
+- #4 `saveSettings()` skriver över `dock-settings.json`
+- #5 Första-parts-dockens lager överlappar
+- #6 Sidodockor: träffyta högre än platsen
 
 ## Förbättringar
 
