@@ -7,7 +7,8 @@ A compact, bottom-centered macOS-inspired dock plugin for Omarchy.
 ## Features
 
 - Glassy floating dock surface
-- Subtle hover scaling and application tooltips
+- macOS-style magnification: icons grow edge to edge around the pointer with
+  no gaps, and the dock grows symmetrically (`hoverScale` is configurable)
 - Pinned application persistence
 - Running-application indicators
 - Pin, unpin, new-window, and close actions
@@ -18,7 +19,7 @@ A compact, bottom-centered macOS-inspired dock plugin for Omarchy.
   `showTrash` in `dock-settings.json` (both default to on)
 - Live window previews on hover, with cached thumbnail fallbacks
 - Custom macOSicons, local PNG, and WebP icon overrides
-- Point-and-click icon picker: right-click any app and choose "Get Info…" to
+- Point-and-click icon picker: right-click any app and choose "Change Icon…" to
   change its icon from macOSicons, your own image, or a direct image URL — no
   terminal needed
 - "Manage Icons…" lets you assign icons to *any* installed app, even before it
@@ -141,10 +142,10 @@ before installing.
 
 No terminal required:
 
-- **Right-click an app on the dock → "Get Info…"** opens an icon picker with
+- **Right-click an app on the dock → "Change Icon…"** opens an icon picker with
   suggested icons from macOSicons (searched by the app's name), a live search
   box, and options to use your own image or a direct image URL.
-- **Right-click any app or empty dock space → "Manage Icons…"** browses every
+- **Right-click an app → "Manage Icons…"** (or right-click empty dock space) browses every
   installed app. You can change an icon for an app that isn't on the dock yet —
   the icon is stored by app id, so it appears automatically the moment the app
   opens.
@@ -198,7 +199,7 @@ suppressed while a menu, icon picker, window preview, drag, or Alt+Tab HUD is
 active. Auto-hide can be toggled without restarting the shell:
 
 ```bash
-# Right-click any dock icon → Turn Hiding Off / On
+# Right-click any dock icon → Dock → Automatically Hide
 omarchy-shell -q macos.dock toggleAutoHide
 omarchy-shell -q macos.dock setAutoHide true
 omarchy-shell -q macos.dock setAutoHide false
@@ -277,6 +278,8 @@ sizes, and geometry are baked in and not yet user-configurable.
 | `dockSide` | string | `"bottom"` | `dock-settings.json` | Dock edge: `bottom`, `left`, or `right`. |
 | `screenMode` | string | `"all"` | `dock-settings.json` | Which outputs carry a dock: `"all"` (every connected output), `"primary"` (the first screen only) or an output name from `hyprctl monitors` such as `"DP-1"`. A named output that is not connected falls back to the primary one. |
 | `showDownloads` | bool | `true` | `dock-settings.json` | Show the Downloads folder after the separator on every dock. Opens the XDG download directory. |
+| `iconSize` | number | `30` | `dock-settings.json` | Icon size in px (16–128). |
+| `hoverScale` | number | `1.5` | `dock-settings.json` | Magnification of the icon under the pointer (1–3; `1` disables it). |
 | `showTrash` | bool | `true` | `dock-settings.json` | Show Trash after Downloads on every dock. Opens `trash:///` and uses the full icon when Trash is not empty. |
 | `pinned` | string[] | `[]` | `dock-pinned-macos.json` | App ids pinned to the dock (persists via Pin/Unpin). |
 | `order` | string[] | `[]` | `dock-pinned-macos.json` | Full spatial order of dock items (pinned + running). |
@@ -304,8 +307,11 @@ All commands are invoked as `omarchy-shell [-q] macos.dock <command>`:
 
 - Timing: 1000ms idle hide delay, 100ms edge-reveal delay, 380ms hide / 280ms
   show animation, 180ms window-preview delay, 300ms persist debounce
-- Geometry: dock height 101px, bottom margin 8px, icon size 50px, slot width
-  58px, slot spacing 8px, side padding 18px, hover scale 1.36, corner radius 18
+- Geometry (single source: `LAYOUT_OPTS` in `DockModelBase.js`): icon size
+  30px, slot width 36px, slot spacing 6px, side padding 12px, hover scale 1.5,
+  magnify reach 96px, dock height icon size + 32px, bottom margin 6px, corner
+  radius 18. `iconSize` and `hoverScale` can be overridden in
+  `dock-settings.json`
 - Edge trigger: bottom 3px of the screen
 
 ### Full default config file
