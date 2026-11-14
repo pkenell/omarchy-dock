@@ -3,6 +3,20 @@
 Kvarvarande punkter efter sessionen 2026-11-14 (hovring, dra och släpp, ny meny,
 inställningar, papperskorgen, uppdelning av `DockPanelBase.qml`).
 
+## Nästa: inställningspanel
+
+- [ ] **Inställningspanel från högerklickmenyn** (ny rad, till exempel
+  "Dockinställningar…" under Dock-raden) där man ställer in:
+  - ikonstorlek (`iconSize`, finns redan som nyckel i `dock-settings.json`)
+  - hovringsgrad (`hoverScale`, finns redan; 1 = ingen förstoring)
+  - bakgrund: solid eller genomskinlig, och hur genomskinlig. Idag är pillret
+    hårdkodat till `Util.alpha(Color.background, 0.50)` i `DockWindow.qml`. Lägg
+    till en nyckel som `backgroundOpacity` (0–1, där 1 = solid).
+  Skriv direkt till skalet vid reglaget (live-förhandsvisning) och spara i
+  `dock-settings.json`. Gör den som en liten `PanelWindow` med samma stil som
+  menyn. Gör först punkten om att `saveSettings()` skriver över hela filen, annars
+  riskerar fler nycklar att skriva över andra dockars inställningar.
+
 ## Fel och risker
 
 - [ ] **Docken "ryckte" vid första ikonen.** När pekaren hovrar strax till vänster
@@ -32,17 +46,6 @@ inställningar, papperskorgen, uppdelning av `DockPanelBase.qml`).
 
 ## Förbättringar
 
-- [ ] **Inställningspanel från högerklickmenyn** (ny rad, till exempel
-  "Dockinställningar…" under Dock-raden) där man ställer in:
-  - ikonstorlek (`iconSize`, finns redan som nyckel i `dock-settings.json`)
-  - hovringsgrad (`hoverScale`, finns redan; 1 = ingen förstoring)
-  - bakgrund: solid eller genomskinlig, och hur genomskinlig. Idag är pillret
-    hårdkodat till `Util.alpha(Color.background, 0.50)` i `DockWindow.qml`. Lägg
-    till en nyckel som `backgroundOpacity` (0–1, där 1 = solid).
-  Skriv direkt till skalet vid reglaget (live-förhandsvisning) och spara i
-  `dock-settings.json`. Gör den som en liten `PanelWindow` med samma stil som
-  menyn. Gör först punkten om att `saveSettings()` skriver över hela filen, annars
-  riskerar fler nycklar att skriva över andra dockars inställningar.
 - [ ] `hoverEffect: "magnify" | "lift" | "none"` (från ursprungsplanen) och
   `magnifyReach` som inställning. Idag finns bara `iconSize` och `hoverScale`.
 - [ ] Ta bort död kod i `DockItem.qml`: `y: -targetLift`, dess `Behavior` och
