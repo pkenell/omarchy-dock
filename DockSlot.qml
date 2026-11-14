@@ -70,11 +70,12 @@ Item {
 
   DockItem {
     id: dockItem
+    // Only the icon reacts to the pointer. On a side dock the area also spans
+    // the gap to the neighbors (pitch = slot + spacing), so there are no dead
+    // strips between icons where the magnification would flicker off.
+    hitTop: dock.vertical ? -Math.round((dock.effSlotWidth + dock.slotSpacing - dock.iconSize) / 2) : 0
+    hitHeight: dock.vertical ? dock.effSlotWidth + dock.slotSpacing : dock.iconSize
     anchors.centerIn: parent
-    // The icon sits at the top of its box with the running dot below it, which
-    // would shift every icon up inside the pill, so move the box
-    // down by half the dot area to center the icon itself.
-    anchors.verticalCenterOffset: Math.round((dock.itemHeight - dock.iconSize) / 2)
     itemData: wrapper.liveData
     iconSize: dock.iconSize
     dockSide: dock.dockSide

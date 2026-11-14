@@ -8,6 +8,11 @@ Item {
 
   required property var itemData
   property int iconSize: 52
+  // Pointer-sensitive area along the icon's height, measured from the top of
+  // the icon: just the icon, not the running-dot area below it. A side dock
+  // widens it to the icon's slot so there are no dead gaps between icons.
+  property real hitTop: 0
+  property real hitHeight: iconSize
   property string dockSide: "bottom"
   // Targets driven by the panel's layout engine. Every change is animated so
   // nothing ever teleports.
@@ -36,7 +41,10 @@ Item {
   signal hoverPointerChanged(var itemData, bool inside, point position)
 
   width: iconSize + 2
-  height: iconSize + 18
+  readonly property bool sideDock: dockSide === "left" || dockSide === "right"
+  // On a side dock the box is just the icon, so scaling about its edge midpoint
+  // keeps the icon centered on its slot; the running dot hangs below it.
+  height: sideDock ? iconSize : iconSize + 18
 
   function iconSource() {
     if (root.iconSourceOverride) return root.iconSourceOverride
@@ -68,7 +76,9 @@ Item {
   // anchors take precedence over x/y — so vertical motion must go through
   // verticalCenterOffset, not y. (The pre-existing y/targetLift binding is
   // left untouched.) bounceOffset is negative-up, matching macOS motion.
-  anchors.verticalCenterOffset: root.bounceOffset
+  // The icon sits at the top of the box with the running dot below it, so on a
+  // bottom dock the box is shifted down by half the dot area to center the icon.
+  anchors.verticalCenterOffset: root.bounceOffset + (root.sideDock ? 0 : Math.round((root.height - root.iconSize) / 2))
 
   Behavior on opacity {
     enabled: root.animationEnabled
@@ -139,7 +149,10 @@ Item {
 
   MouseArea {
     id: mouse
-    anchors.fill: parent
+    anchors.left: parent.left
+    anchors.right: parent.right
+    y: root.hitTop
+    height: root.hitHeight
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
