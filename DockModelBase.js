@@ -545,22 +545,29 @@ function parseSettings(text, fallback) {
     }
 }
 
-function serializeSettings(settings) {
+// `existing` is the current file text. Keys this dock does not own (written by
+// other docks or tools sharing dock-settings.json) are kept as they are; only
+// our own keys are replaced.
+function serializeSettings(settings, existing) {
+    var kept = {}
+    try {
+        var prior = JSON.parse(String(existing || ""))
+        if (prior && typeof prior === "object" && !Array.isArray(prior)) kept = prior
+    } catch (e) {}
     var value = settings && typeof settings.autoHide === "boolean" ? settings.autoHide : true
     var side = normalizeSide(settings && settings.dockSide)
     var screenMode = normalizeScreenMode(settings && settings.screenMode)
     var showDownloads = flagSetting(settings && settings.showDownloads, true)
     var showTrash = flagSetting(settings && settings.showTrash, true)
-    return JSON.stringify({
-        version: 1,
-        autoHide: value,
-        dockSide: side,
-        screenMode: screenMode,
-        showDownloads: showDownloads,
-        showTrash: showTrash,
-        iconSize: clampNumber(settings && settings.iconSize, 16, 128, LAYOUT_OPTS.iconSize),
-        hoverScale: clampNumber(settings && settings.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
-    }, null, 2) + "\n"
+    kept.version = 1
+    kept.autoHide = value
+    kept.dockSide = side
+    kept.screenMode = screenMode
+    kept.showDownloads = showDownloads
+    kept.showTrash = showTrash
+    kept.iconSize = clampNumber(settings && settings.iconSize, 16, 128, LAYOUT_OPTS.iconSize)
+    kept.hoverScale = clampNumber(settings && settings.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
+    return JSON.stringify(kept, null, 2) + "\n"
 }
 
 // Resolve a screen mode against a live screen list (Quickshell.screens in QML,

@@ -575,3 +575,15 @@ test("iconSize and hoverScale are optional, clamped settings", () => {
   assert.equal(p.hoverScale, 1)
   assert.equal(model.parseSettings('{"iconSize": "x"}', { iconSize: 40 }).iconSize, 40)
 })
+
+test("serializeSettings keeps keys it does not own", () => {
+  const existing = '{"dockEnabled":true,"dockWidgets":["a","b"],"dockSide":"left","autoHide":false}'
+  const out = JSON.parse(model.serializeSettings({ autoHide: true, dockSide: "right" }, existing))
+  assert.equal(out.dockEnabled, true)
+  assert.deepEqual(out.dockWidgets, ["a", "b"])
+  assert.equal(out.dockSide, "right")
+  assert.equal(out.autoHide, true)
+  // Broken or non-object files fall back to a fresh file.
+  assert.equal(JSON.parse(model.serializeSettings({}, "not json")).version, 1)
+  assert.equal(JSON.parse(model.serializeSettings({}, "[1,2]")).version, 1)
+})
