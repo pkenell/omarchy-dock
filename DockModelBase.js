@@ -23,7 +23,9 @@ var LAYOUT_OPTS = {
     sidePadding: 8,
     separatorWidth: 8,
     // Dock background: 0 = fully transparent, 1 = solid.
-    backgroundOpacity: 0.5
+    backgroundOpacity: 0.5,
+    // Extra pill height on top of the icon size (half above, half below).
+    dockPadding: 22
 }
 
 function clampNumber(value, min, max, fallback) {
@@ -517,7 +519,8 @@ function parseSettings(text, fallback) {
         showTrash: flagSetting(undefined, defaults.showTrash),
         iconSize: clampNumber(defaults.iconSize, 16, 128, LAYOUT_OPTS.iconSize),
         hoverScale: clampNumber(defaults.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale),
-        backgroundOpacity: clampNumber(defaults.backgroundOpacity, 0, 1, LAYOUT_OPTS.backgroundOpacity)
+        backgroundOpacity: clampNumber(defaults.backgroundOpacity, 0, 1, LAYOUT_OPTS.backgroundOpacity),
+        dockPadding: clampNumber(defaults.dockPadding, 8, 48, LAYOUT_OPTS.dockPadding)
     }
     var source = String(text || "").trim()
     if (!source) return base
@@ -533,10 +536,12 @@ function parseSettings(text, fallback) {
             showTrash: base.showTrash,
             iconSize: base.iconSize,
             hoverScale: base.hoverScale,
-            backgroundOpacity: base.backgroundOpacity
+            backgroundOpacity: base.backgroundOpacity,
+            dockPadding: base.dockPadding
         }
         if (parsed.iconSize !== undefined) out.iconSize = clampNumber(parsed.iconSize, 16, 128, base.iconSize)
         if (parsed.hoverScale !== undefined) out.hoverScale = clampNumber(parsed.hoverScale, 1, 3, base.hoverScale)
+        if (parsed.dockPadding !== undefined) out.dockPadding = clampNumber(parsed.dockPadding, 8, 48, base.dockPadding)
         if (parsed.backgroundOpacity !== undefined) out.backgroundOpacity = clampNumber(parsed.backgroundOpacity, 0, 1, base.backgroundOpacity)
         if (typeof parsed.autoHide === "boolean") out.autoHide = parsed.autoHide
         else if (typeof parsed.autoHide === "string") out.autoHide = parsed.autoHide === "true"
@@ -572,6 +577,7 @@ function serializeSettings(settings, existing) {
     kept.showTrash = showTrash
     kept.iconSize = clampNumber(settings && settings.iconSize, 16, 128, LAYOUT_OPTS.iconSize)
     kept.hoverScale = clampNumber(settings && settings.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
+    kept.dockPadding = clampNumber(settings && settings.dockPadding, 8, 48, LAYOUT_OPTS.dockPadding)
     kept.backgroundOpacity = clampNumber(settings && settings.backgroundOpacity, 0, 1, LAYOUT_OPTS.backgroundOpacity)
     return JSON.stringify(kept, null, 2) + "\n"
 }

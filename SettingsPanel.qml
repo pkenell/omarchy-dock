@@ -110,6 +110,16 @@ PanelWindow {
 
       SettingSlider {
         width: content.width
+        label: strings.t("settings.padding")
+        valueText: root.dock ? root.dock.dockPadding + " px" : ""
+        from: 8; to: 48; stepSize: 2
+        value: root.dock ? root.dock.dockPadding : 22
+        onMoved: function(v) { root.dock.dockPadding = Math.round(v) }
+        onReleased: root.dock.saveSettings()
+      }
+
+      SettingSlider {
+        width: content.width
         label: strings.t("settings.background")
         valueText: !root.dock ? "" : (root.dock.backgroundOpacity >= 0.995 ? strings.t("settings.solid")
                    : root.dock.backgroundOpacity <= 0.005 ? strings.t("settings.transparent")
