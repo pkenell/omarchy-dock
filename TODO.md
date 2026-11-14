@@ -19,8 +19,6 @@ Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-d
 
 - [ ] `hoverEffect: "magnify" | "lift" | "none"` (från ursprungsplanen) och
   `magnifyReach` som inställning. Idag finns bara `iconSize` och `hoverScale`.
-- [ ] Ta bort död kod i `DockItem.qml`: `y: -targetLift`, dess `Behavior` och
-  `targetLift`-plumbingen (ankring via `anchors.centerIn` gör att `y` aldrig gäller).
 - [ ] Fler språk än engelska och svenska (`i18n/en.json`, `i18n/sv.json`). Nya nycklar
   måste läggas till i alla språkfiler.
 - [ ] Fönstertitlar i menyn: begränsa längd och antal (idag max 8, elidering).
