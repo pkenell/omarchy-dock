@@ -19,6 +19,14 @@ inställningar, papperskorgen, uppdelning av `DockPanelBase.qml`).
 
 ## Fel och risker
 
+- [ ] **Ikonbytardialogen visar bara få förhandsvisningar (oftast en).** I
+  "Byt ikon…" visas bara ett fåtal ikoner i rutnätet, ofta bara en, trots att
+  sökningen säger "23 icons found". Övriga rutor är tomma. Gäller alla appar, inte
+  bara Claude. Gissning: ikonerna hämtas/laddas lazy eller asynkront (nätverk eller
+  cache) och bilderna visas aldrig, eller så begränsas antalet samtidiga
+  nedladdningar/delegater. Börja i `DockMenu.qml`/`DockPanelBase.qml`
+  (`picker.*`, ikonsökning mot macOSicons): logga laddningsstatus per bild och
+  kontrollera om `Image.status` fastnar på `Loading` eller `Error`.
 - [ ] **Docken "ryckte" vid första ikonen.** När pekaren hovrar strax till vänster
   om mitten av den första ikonen på en dock börjar hela docken vibrera ett par
   pixlar fram och tillbaka. Det syns inte på de andra ikonerna. Ej reproducerat
