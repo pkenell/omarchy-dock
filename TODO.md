@@ -46,13 +46,9 @@ Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-d
 
 - [ ] PR #28 (papperskorgen) väntar på granskning:
   https://github.com/ifubaraboye/omarchy-dock/pull/28
-- [x] **PR uppströms för ikonbytaren** (klart: PR #29, väntar på granskning) (förhandsvisningarna, issue #2). Skapa en ny
-  branch från `upstream/main`, hämta bara ändringen i `IconPickerPanel.qml`
-  (`git cherry-pick` av fixen, commit `22e3f82`), kontrollera att den går att tillämpa
-  utan våra andra ändringar, och öppna PR mot `ifubaraboye/omarchy-dock`. Beskriv
-  orsaken: kön nollställdes efter att rutorna lagt sig i den, `push` på en
-  `property var`-lista sparas inte, och avslut/utdata kunde komma i fel ordning.
- ska skickas uppströms utan att trampa någon på tårna, och om
+- [x] PR för ikonbytaren (förhandsvisningarna, issue #2): PR #29 väntar på granskning:
+  https://github.com/ifubaraboye/omarchy-dock/pull/29
+- [ ] Besluta hur resten ska skickas uppströms utan att trampa någon på tårna, och om
   forken ska publiceras som ett eget projekt. Kandidater till små PR:er:
   fixen för dra och släpp (opacity 0 avbryter musgreppet), konfigurerbara
   storlekar, den kompakta menyn och den nya förstoringsmotorn.
