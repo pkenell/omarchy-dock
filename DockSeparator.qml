@@ -22,6 +22,28 @@ Item {
     enabled: separatorItem.animating && dock.layoutTransition && Style.duration(1) > 0
     SpringAnimation { spring: 4.5; damping: 0.95; mass: 1 }
   }
+  // No icon owns the gap around the separator, so without this the
+  // magnification would freeze at the last icon and then jump on the next one.
+  // Follow the pointer across the whole gap (separator plus the spacing on each
+  // side), at the height of an icon.
+  MouseArea {
+    x: -dock.slotSpacing
+    width: separatorItem.width + 2 * dock.slotSpacing
+    y: Math.round((separatorItem.height - dock.iconSize) / 2)
+    height: dock.iconSize
+    acceptedButtons: Qt.NoButton
+    hoverEnabled: true
+    function follow() {
+      if (dock.floatingId) return
+      var p = mapToItem(null, mouseX, mouseY)
+      dock.markActiveScreen(separatorItem.outputName)
+      dock.hoveredMouseX = dock.vertical ? p.y : p.x
+      dock.applyLayout()
+    }
+    onEntered: follow()
+    onPositionChanged: follow()
+  }
+
   Rectangle {
     anchors.centerIn: parent
     width: 1
