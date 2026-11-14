@@ -54,10 +54,10 @@ PanelWindow {
     width: dock.surfaceWidth
     height: dock.surfaceHeight
     radius: 18
-    color: Util.alpha(Color.background, 0.50)
+    color: Util.alpha(Color.background, dock.backgroundOpacity)
     border.color: Util.alpha(Color.foreground, 0.04)
     border.width: 1
-    opacity: !dock.enabled ? 0 : (dock.menuOpen || dock.pickerOpen || dock.dockHovered ? 1 : 0.96)
+    opacity: !dock.enabled ? 0 : (dock.menuOpen || dock.pickerOpen || dock.settingsOpen || dock.dockHovered ? 1 : 0.96)
 
     // Top edge now matches the other three sides via the 1px border
     // (0.04) alone — no extra highlight, so the dock reads as a uniform

@@ -587,3 +587,14 @@ test("serializeSettings keeps keys it does not own", () => {
   assert.equal(JSON.parse(model.serializeSettings({}, "not json")).version, 1)
   assert.equal(JSON.parse(model.serializeSettings({}, "[1,2]")).version, 1)
 })
+
+test("backgroundOpacity is clamped, defaults to 0.5 and round-trips", () => {
+  assert.equal(model.parseSettings("{}", {}).backgroundOpacity, 0.5)
+  assert.equal(model.parseSettings('{"backgroundOpacity":1}', {}).backgroundOpacity, 1)
+  assert.equal(model.parseSettings('{"backgroundOpacity":0}', {}).backgroundOpacity, 0)
+  assert.equal(model.parseSettings('{"backgroundOpacity":7}', {}).backgroundOpacity, 1)
+  assert.equal(model.parseSettings('{"backgroundOpacity":-2}', {}).backgroundOpacity, 0)
+  assert.equal(model.parseSettings('{"backgroundOpacity":"x"}', {}).backgroundOpacity, 0.5)
+  assert.equal(JSON.parse(model.serializeSettings({ backgroundOpacity: 0.8 })).backgroundOpacity, 0.8)
+  assert.equal(JSON.parse(model.serializeSettings({})).backgroundOpacity, 0.5)
+})

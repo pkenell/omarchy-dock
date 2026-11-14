@@ -21,7 +21,9 @@ var LAYOUT_OPTS = {
     hoverScale: 1.5,
     radius: 96,
     sidePadding: 8,
-    separatorWidth: 8
+    separatorWidth: 8,
+    // Dock background: 0 = fully transparent, 1 = solid.
+    backgroundOpacity: 0.5
 }
 
 function clampNumber(value, min, max, fallback) {
@@ -514,7 +516,8 @@ function parseSettings(text, fallback) {
         showDownloads: flagSetting(undefined, defaults.showDownloads),
         showTrash: flagSetting(undefined, defaults.showTrash),
         iconSize: clampNumber(defaults.iconSize, 16, 128, LAYOUT_OPTS.iconSize),
-        hoverScale: clampNumber(defaults.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
+        hoverScale: clampNumber(defaults.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale),
+        backgroundOpacity: clampNumber(defaults.backgroundOpacity, 0, 1, LAYOUT_OPTS.backgroundOpacity)
     }
     var source = String(text || "").trim()
     if (!source) return base
@@ -529,10 +532,12 @@ function parseSettings(text, fallback) {
             showDownloads: base.showDownloads,
             showTrash: base.showTrash,
             iconSize: base.iconSize,
-            hoverScale: base.hoverScale
+            hoverScale: base.hoverScale,
+            backgroundOpacity: base.backgroundOpacity
         }
         if (parsed.iconSize !== undefined) out.iconSize = clampNumber(parsed.iconSize, 16, 128, base.iconSize)
         if (parsed.hoverScale !== undefined) out.hoverScale = clampNumber(parsed.hoverScale, 1, 3, base.hoverScale)
+        if (parsed.backgroundOpacity !== undefined) out.backgroundOpacity = clampNumber(parsed.backgroundOpacity, 0, 1, base.backgroundOpacity)
         if (typeof parsed.autoHide === "boolean") out.autoHide = parsed.autoHide
         else if (typeof parsed.autoHide === "string") out.autoHide = parsed.autoHide === "true"
         if (parsed.dockSide !== undefined) out.dockSide = normalizeSide(parsed.dockSide)
@@ -567,6 +572,7 @@ function serializeSettings(settings, existing) {
     kept.showTrash = showTrash
     kept.iconSize = clampNumber(settings && settings.iconSize, 16, 128, LAYOUT_OPTS.iconSize)
     kept.hoverScale = clampNumber(settings && settings.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
+    kept.backgroundOpacity = clampNumber(settings && settings.backgroundOpacity, 0, 1, LAYOUT_OPTS.backgroundOpacity)
     return JSON.stringify(kept, null, 2) + "\n"
 }
 
