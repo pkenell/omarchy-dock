@@ -149,8 +149,8 @@ Item {
   // Slide state for auto-hide. The PanelWindow stays mapped when enabled;
   // this flag drives the bottomMargin translation so the glide is animated.
   property bool autoHidden: false
-  property int dockHeight: 101
-  property int bottomMargin: 8
+  property int dockHeight: root.itemHeight + 14
+  property int bottomMargin: 6
   // Dock geometry is computed in screen coordinates (dockWindow fills the
   // screen) instead of conditional anchors. Switching sides cannot leave a
   // stale anchor competing with a new one, which otherwise pinned the dock to
@@ -275,7 +275,49 @@ Item {
       root.activeScreenName = ""
     root.applyLayout()
   }
-  property int iconSize: 50
+  // Geometry defaults come from DockModel.LAYOUT_OPTS (single source);
+  // iconSize and hoverScale can be overridden in dock-settings.json.
+  property int iconSize: DockModel.LAYOUT_OPTS.iconSize
+  property real hoverScale: DockModel.LAYOUT_OPTS.hoverScale
+  property int magnifyReach: DockModel.LAYOUT_OPTS.radius
+  // 0..1, animated: how much of the pointer magnification is applied. The
+  // layout is a pure function of (pointer, magnifyAmount), so the row never
+  // lags behind the pointer and never leaves gaps between icons.
+  property real magnifyAmount: root.hoveredMouseX >= 0 ? 1 : 0
+  Behavior on magnifyAmount {
+    NumberAnimation { duration: Style.duration(root.magnifyAmount < 1 && root.hoveredMouseX >= 0 ? 110 : 220); easing.type: Easing.OutCubic }
+  }
+  onMagnifyAmountChanged: root.applyLayout()
+  property real lastCursorX: -1
+  property real restRowWidth: 0
+  // True for a short while after a structural change (app opened/closed,
+  // reorder, drop) so icons glide to their new slots. Plain hovering never
+  // sets it: magnification is not animated per icon.
+  property bool layoutTransition: false
+  readonly property int itemHeight: root.iconSize + 18
+  // On a side dock the row runs vertically, so each icon needs room for its
+  // running-dot below it along that axis.
+  readonly property int effSlotWidth: root.vertical ? Math.max(root.slotWidth, root.iconSize + 10) : root.slotWidth
+  readonly property real magnifyHeadroom: (root.autoHide && root.autoHidden) ? 0 : Math.ceil(root.iconSize * (root.hoverScale - 1)) + 6
+  readonly property var layoutOpts: ({
+    slotWidth: root.effSlotWidth,
+    spacing: root.slotSpacing,
+    iconSize: root.iconSize,
+    hoverScale: root.hoverScale,
+    radius: root.magnifyReach,
+    sidePadding: root.sidePadding,
+    separatorWidth: root.separatorWidth,
+    amount: root.magnifyAmount
+  })
+  function markLayoutTransition() {
+    root.layoutTransition = true
+    layoutTransitionTimer.restart()
+  }
+  Timer {
+    id: layoutTransitionTimer
+    interval: 450
+    onTriggered: root.layoutTransition = false
+  }
   property real hoveredMouseX: -1
   property string hoveredItemId: ""
   property var tooltipItem: null
@@ -317,10 +359,10 @@ Item {
   // applyLayout(), which only mutates existing delegates, so no delegate is
   // ever torn down by dragging. Mutable pinned/running state lives in each
   // delegate's liveData binding so state changes never rebuild the Repeater.
-  property int slotWidth: 58
-  property int slotSpacing: 8
-  property int sidePadding: 18
-  property int separatorWidth: 14
+  property int slotWidth: DockModel.LAYOUT_OPTS.slotWidth
+  property int slotSpacing: DockModel.LAYOUT_OPTS.spacing
+  property int sidePadding: DockModel.LAYOUT_OPTS.sidePadding
+  property int separatorWidth: DockModel.LAYOUT_OPTS.separatorWidth
   property string floatingId: ""
   property var tempDrag: ({ id: "", index: -1 })
   property var placements: ({})
@@ -420,7 +462,9 @@ Item {
       dockSide: root.dockSide,
       screenMode: root.screenMode,
       showDownloads: root.showDownloads,
-      showTrash: root.showTrash
+      showTrash: root.showTrash,
+      iconSize: root.iconSize,
+      hoverScale: root.hoverScale
     })
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
@@ -442,6 +486,8 @@ Item {
 
   onShowDownloadsChanged: root.applyLayout()
   onShowTrashChanged: root.applyLayout()
+  onIconSizeChanged: root.applyLayout()
+  onHoverScaleChanged: root.applyLayout()
   onScreenModeChanged: {
     root.pruneOutputs()
     root.saveSettings()
@@ -679,6 +725,7 @@ Item {
       if (!root.sameIdSet(root.dockOrder, root.dockItems))
         root.dockItems = root.dockOrder.slice()
     }
+    if (!root.floatingId) root.markLayoutTransition()
     root.applyLayout()
     // Launch bounce: any NOT RUNNING -> RUNNING transition bounces once,
     // exactly when the app opens. Dock clicks, external launches and
@@ -710,6 +757,15 @@ Item {
     if (!row) return -1
     if (root.vertical) return row.mapFromItem(null, 0, root.hoveredMouseX).x
     return row.mapFromItem(null, root.hoveredMouseX, 0).x
+  }
+
+  // Pointer in the resting row frame. While the magnification fades out after
+  // the pointer left, keep using the last known position so the wave
+  // collapses in place instead of snapping.
+  function layoutCursorX() {
+    var c = root.cursorXInRow()
+    if (c >= 0) root.lastCursorX = c
+    return c >= 0 ? c : root.lastCursorX
   }
 
   // Leaving the dock over a gap or the surface padding never triggers a
@@ -829,28 +885,40 @@ Item {
     return { x: p ? p.x : 0, scale: p ? p.scale : 1, lift: p ? p.lift : 0 }
   }
 
-  function applyLayout() {
-    var cursorX = root.cursorXInRow()
-    var baseFlow = DockModel.buildFlow(root.dockOrder, [], root.floatingId, -1)
-    if (root.floatingId && cursorX >= 0)
-      root.tempDrag.index = DockModel.insertionIndexFor(cursorX, baseFlow, DockModel.LAYOUT_OPTS)
-    var mainFlow = DockModel.buildFlow(
-      root.dockOrder,
-      [],
-      root.floatingId,
-      root.floatingId ? root.tempDrag.index : -1
-    )
+  function fullFlowFor(order, floatingId, phantomIndex) {
+    var mainFlow = DockModel.buildFlow(order, [], floatingId, phantomIndex)
     // The fixed section is appended after every app, including running
-    // unpinned ones. Drag insertion above uses mainFlow only, so a drop can
-    // never land inside the separator, Downloads, or Trash.
-    var fullFlow = DockModel.appendSpecialItems(mainFlow, {
+    // unpinned ones, so a drop can never land inside the separator,
+    // Downloads or Trash.
+    return DockModel.appendSpecialItems(mainFlow, {
       showDownloads: root.showDownloads,
       showTrash: root.showTrash,
       trashFull: root.trashFull
     })
-    var result = DockModel.computeLayout(fullFlow, cursorX, DockModel.LAYOUT_OPTS)
+  }
+
+  function applyLayout() {
+    var cursorX = root.layoutCursorX()
+    var opts = root.layoutOpts
+    var phantomAt = -1
+    if (root.floatingId) {
+      var baseCount = DockModel.buildFlow(root.dockOrder, [], root.floatingId, -1).length
+      if (root.dragInsideDock) {
+        var current = root.tempDrag.index < 0 ? baseCount : Math.min(root.tempDrag.index, baseCount)
+        // Slot under the pointer in the resting frame, measured on the flow
+        // exactly as displayed (placeholder included), so the placeholder
+        // does not oscillate between two slots.
+        var displayed = root.fullFlowFor(root.dockOrder, root.floatingId, current)
+        var idx = cursorX >= 0 ? DockModel.slotIndexAt(cursorX, displayed, opts) : current
+        phantomAt = Math.max(0, Math.min(idx, baseCount))
+        if (phantomAt !== root.tempDrag.index) root.markLayoutTransition()
+      }
+      root.tempDrag.index = phantomAt
+    }
+    var result = DockModel.computeLayout(root.fullFlowFor(root.dockOrder, root.floatingId, phantomAt), cursorX, opts)
     root.placements = result.placements
     root.layoutWidth = result.totalWidth
+    root.restRowWidth = result.restWidth
     for (var id in result.placements) {
       var p = result.placements[id]
       var list = root.delegatesFor(id)
@@ -858,15 +926,15 @@ Item {
         var d = list[i]
         d.x = p.x
         d.targetScale = p.scale
-        // Side docks grow inward through the transform origin; a vertical
-        // translation here would make the icon drift along the edge instead.
-        d.targetLift = root.vertical ? 0 : p.lift
-        d.targetOpacity = (id === root.floatingId) ? 0 : (p.phantom ? 0.45 : 1)
+        d.targetLift = 0
+        d.targetOpacity = (id === root.floatingId) ? 0.01 : (p.phantom ? 0.45 : 1)
       }
     }
-    // The dragged item is excluded from the flow so it has no placement; hide
-    // its dock copy while the ghost follows the cursor.
-    root.eachDelegate(root.floatingId, function(d) { d.targetOpacity = 0 })
+    // The dragged item is excluded from the flow so it has no placement. Keep
+    // it at 0.01, not 0: an item with opacity 0 stops being visible to Qt,
+    // which silently cancels the mouse grab and the release (drop) never
+    // reaches it.
+    root.eachDelegate(root.floatingId, function(d) { d.targetOpacity = 0.01 })
   }
 
   function checkDockConflict() {
@@ -1105,39 +1173,29 @@ Item {
     root.hidePreview()
     root.menuOpen = true
     dockMenu.itemData = item
-    dockMenu.requestedPosition = Qt.point(position.x, position.y - dockMenu.height - 12)
+    dockMenu.windows = (item && !item.special) ? root.gatherWindowsForApp(item.id) : []
+    dockMenu.requestedPosition = Qt.point(position.x, position.y)
     dockMenu.opened = true
   }
 
-  function menuAction(action, item) {
+  function menuAction(action, item, arg) {
     if (action === "toggleAutoHide") {
       root.autoHide = !root.autoHide
       root.saveSettings()
       return
     }
     if (action === "setSideBottom" || action === "setSideLeft" || action === "setSideRight") {
-      var newSide = action.slice(7).toLowerCase()
-      root.dockSide = newSide
+      root.dockSide = action.slice(7).toLowerCase()
       return
     }
-    // Special items: Downloads / Trash — treat menu actions as folder actions
-    if (item && (item.id === "downloads" || item.id === "trash")) {
-      if (action === "togglePin" || action === "newWindow") {
-        if (item.id === "downloads") root.openDownloads()
-        else root.openTrash()
-        return
-      }
-      if (action === "close") {
-        if (item.id === "trash") {
-          if (root.trashFull) root.emptyTrash()
-          else root.openTrash()
-        } else {
-          root.openDownloads()
-        }
-        return
-      }
-    }
+    if (action === "focusWindow") { root.focusWindowAddress(arg); return }
     if (!item) return
+    if (action === "open") {
+      if (item.id === "trash") root.openTrash()
+      else if (item.id === "downloads") root.openDownloads()
+      return
+    }
+    if (action === "emptyTrash") { root.emptyTrash(); return }
     if (action === "togglePin") root.pinnedIds = DockModel.togglePinned(root.pinnedIds, item.id)
     else if (action === "newWindow") handleClick({ id: item.id, name: item.name, running: false })
     else if (action === "close") closeWindow(item.id)
@@ -1170,7 +1228,7 @@ Item {
       for (var i = values.length - 1; i >= 0; i--) {
         var window = values[i]
         var windowId = String(window.appId || window.desktopId || window.className || "").replace(/\.desktop$/, "")
-        if (windowId === id && typeof window.close === "function") { window.close(); return }
+        if (windowId === id && typeof window.close === "function") window.close()
       }
     } catch (error) {}
   }
@@ -1230,7 +1288,6 @@ Item {
     // exactly what received the drag instead of a coordinate mapping
     // re-derived at release time.
     var inside = root.dragInsideDock
-    console.log("macos.dock finishDrag", JSON.stringify({ id: id, inside: inside, localX: surfacePosition.x, localY: surfacePosition.y, surfaceW: root.surfaceWidth, surfaceH: root.surfaceHeight, cursorX: root.cursorXInRow() }))
     var wasPinned = root.pinnedIds.indexOf(id) !== -1
     var persist = false
 
@@ -1242,7 +1299,6 @@ Item {
       // Reorder the session dock — never the pinned list. Dragging never
       // promotes a running app into a persistent pin.
       var newOrder = DockModel.moveInOrder(root.dockOrder, id, idx)
-      console.log("macos.dock reorder", JSON.stringify({ id: id, idx: idx, wasPinned: wasPinned, dockOrderBefore: root.dockOrder, newOrder: newOrder, pinnedBefore: root.pinnedIds, runningIds: root.runningIds }))
       if (newOrder.join("|") !== root.dockOrder.join("|")) {
         root.dockOrder = newOrder
         // Snap the dropped delegate straight to its new slot. Without this the
@@ -1251,17 +1307,9 @@ Item {
         // (opacity 0) while floating, so the snap is seamless: it appears
         // instantly at full opacity exactly where the ghost was, and applyLayout
         // then assigns the identical x, so no spring runs.
-        var dropFlow = DockModel.buildFlow(newOrder, [], "", -1)
-        var dropResult = DockModel.computeLayout(dropFlow, root.cursorXInRow(), DockModel.LAYOUT_OPTS)
+        var dropResult = DockModel.computeLayout(root.fullFlowFor(newOrder, "", -1), root.layoutCursorX(), root.layoutOpts)
         var dropP = dropResult.placements[id]
-        var dropDelegate = root.delegatesFor(id)[0]
-        if (dropP && dropDelegate) {
-          // Snap the dropped copy straight to its new slot. Without this the
-          // settle spring carries it the whole way from its old slot and swings
-          // back past the drop point before settling. The delegate is invisible
-          // (opacity 0) while floating, so the snap is seamless: it appears
-          // instantly at full opacity exactly where the ghost was, and
-          // applyLayout then assigns the identical x, so no spring runs.
+        if (dropP) {
           var dropList = root.delegatesFor(id)
           for (var k = 0; k < dropList.length; k++) {
             dropList[k].animating = false
@@ -1296,6 +1344,7 @@ Item {
       restoredDelegates[r].animating = true
     }
 
+    root.markLayoutTransition()
     root.floatingId = ""
     root.tempDrag = { id: "", index: -1 }
     // Always rebuild so any window/app changes deferred while dragging apply.
@@ -1738,7 +1787,8 @@ Item {
     printErrors: false
     onLoaded: {
       var parsed = DockModel.parseSettings(text(), {
-        autoHide: true, dockSide: "bottom", screenMode: "all", showDownloads: true, showTrash: true
+        autoHide: true, dockSide: "bottom", screenMode: "all", showDownloads: true, showTrash: true,
+        iconSize: DockModel.LAYOUT_OPTS.iconSize, hoverScale: DockModel.LAYOUT_OPTS.hoverScale
       })
       if (!root.settingsLoaded) {
         root.settingsLoaded = true
@@ -1751,6 +1801,8 @@ Item {
       // writes settings and would otherwise persist the previous values.
       root.showDownloads = parsed.showDownloads
       root.showTrash = parsed.showTrash
+      root.iconSize = parsed.iconSize
+      root.hoverScale = parsed.hoverScale
       if (root.dockSide !== parsed.dockSide) root.dockSide = parsed.dockSide
       if (root.screenMode !== parsed.screenMode) root.screenMode = parsed.screenMode
       // If auto-hide is turned off, ensure the dock is fully revealed.
@@ -1767,6 +1819,8 @@ Item {
       root.showDownloads = true
       root.showTrash = true
       root.screenMode = "all"
+      root.iconSize = DockModel.LAYOUT_OPTS.iconSize
+      root.hoverScale = DockModel.LAYOUT_OPTS.hoverScale
     }
   }
 
@@ -1968,7 +2022,18 @@ Item {
         // the small visible pill, on any host with Hyprland blur enabled. The
         // 0.50 alpha tint below is deliberately the only "glass" effect; no
         // compositor backdrop blur is requested for this namespace.
-        mask: Region { item: dockSurface }
+        mask: Region { item: hitArea }
+
+        // Input region: the pill plus the headroom magnified icons grow into,
+        // so an enlarged icon keeps receiving the pointer (no flicker at its
+        // top edge). The headroom is 0 while auto-hidden.
+        Item {
+          id: hitArea
+          x: dockSurface.x - ((root.vertical && root.dockSide === "right") ? root.magnifyHeadroom : 0)
+          y: dockSurface.y - (!root.vertical ? root.magnifyHeadroom : 0)
+          width: dockSurface.width + (root.vertical ? root.magnifyHeadroom : 0)
+          height: dockSurface.height + (!root.vertical ? root.magnifyHeadroom : 0)
+        }
 
         // Publish this output's dock row: cursorXInRow() needs the row belonging to
         // the screen the hover came from, and only the delegate can reach its own.
@@ -1992,16 +2057,23 @@ Item {
           // glass pill instead of a brighter top. Removed the previous 0.10 bar
           // that made the top brighter than left/right/bottom.
 
+          // The axis along the row is driven directly by the magnification so
+          // the pill always hugs the icons; it only glides on structural
+          // changes. The cross axis carries the auto-hide slide.
           Behavior on x {
-            NumberAnimation { duration: Style.duration(root.autoHidden ? root.hideDuration : root.showDuration); easing.type: Easing.OutCubic }
+            enabled: root.vertical || root.layoutTransition
+            NumberAnimation { duration: Style.duration(root.vertical ? (root.autoHidden ? root.hideDuration : root.showDuration) : 250); easing.type: Easing.OutCubic }
           }
           Behavior on y {
-            NumberAnimation { duration: Style.duration(root.autoHidden ? root.hideDuration : root.showDuration); easing.type: Easing.OutCubic }
+            enabled: !root.vertical || root.layoutTransition
+            NumberAnimation { duration: Style.duration(!root.vertical ? (root.autoHidden ? root.hideDuration : root.showDuration) : 250); easing.type: Easing.OutCubic }
           }
           Behavior on width {
+            enabled: root.layoutTransition
             NumberAnimation { duration: Style.duration(250); easing.type: Easing.OutCubic }
           }
           Behavior on height {
+            enabled: root.layoutTransition
             NumberAnimation { duration: Style.duration(250); easing.type: Easing.OutCubic }
           }
           Behavior on opacity { NumberAnimation { duration: Style.duration(180); easing.type: Easing.OutCubic } }
@@ -2009,15 +2081,18 @@ Item {
           Item {
             id: dockRow
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: 6
-            width: root.layoutWidth - 2 * root.sidePadding
-            height: 70
+            anchors.verticalCenterOffset: 0
+            // Fixed to the resting row: the pointer frame never changes while
+            // icons magnify. The pill grows around it symmetrically.
+            width: root.restRowWidth
+            height: root.itemHeight
             // Left/right docks reuse the horizontal layout engine: the row is
-            // rotated -90° so the x-axis becomes screen-y (first item on top) and
-            // each wrapper counter-rotates +90° to keep icons upright.
-            rotation: root.vertical ? -90 : 0
+            // rotated +90° so the x-axis becomes screen-y (first item on top) and
+            // each wrapper counter-rotates -90° to keep icons upright.
+            rotation: root.vertical ? 90 : 0
 
             Behavior on width {
+              enabled: root.layoutTransition
               NumberAnimation { duration: Style.duration(250); easing.type: Easing.OutCubic }
             }
             Behavior on rotation {
@@ -2036,10 +2111,10 @@ Item {
                 // The wrapper spans the scaled slot so the centered icon sits at
                 // the slot's visual center — a single magnified icon stays
                 // centered in the dock instead of drifting left.
-                width: root.slotWidth * targetScale
-                height: 70
+                width: root.effSlotWidth * targetScale
+                height: root.itemHeight
                 x: 0
-                rotation: root.vertical ? 90 : 0
+                rotation: root.vertical ? -90 : 0
                 property bool animating: false
 
                 // Live metadata mirrored from observable root state so a pin or
@@ -2061,7 +2136,7 @@ Item {
                 function cancelBounce() { dockItem.cancelLaunchBounce() }
 
                 Behavior on x {
-                  enabled: wrapper.animating && Style.duration(1) > 0
+                  enabled: wrapper.animating && root.layoutTransition && Style.duration(1) > 0
                   SpringAnimation { spring: 4.5; damping: 0.95; mass: 1 }
                 }
 
@@ -2071,7 +2146,7 @@ Item {
                   x = seed.x
                   targetScale = seed.scale
                   targetLift = seed.lift
-                  targetOpacity = (modelData === root.floatingId) ? 0 : 1
+                  targetOpacity = (modelData === root.floatingId) ? 0.01 : 1
                   animating = true
                   // Newly appearing launched app: the bounce intent was recorded
                   // before this delegate existed; play it now that animation is on.
@@ -2089,7 +2164,7 @@ Item {
                   itemData: wrapper.liveData
                   iconSize: root.iconSize
                   dockSide: root.dockSide
-                  animationEnabled: wrapper.animating
+                  animationEnabled: wrapper.animating && root.layoutTransition
                   iconSourceOverride: root.iconSourceFor(modelData)
                   onItemLeftClicked: function(clickedItem) { root.handleClick(clickedItem) }
                   onItemRightClicked: function(clickedItem, position) { root.openMenu(clickedItem, position) }
@@ -2130,14 +2205,14 @@ Item {
                 id: separatorItem
                 property string screenName: dockWindow.outputName
                 width: root.separatorWidth
-                height: 70
+                height: root.itemHeight
                 x: 0
                 property bool animating: false
                 property real targetScale: 1
                 property real targetLift: 0
                 property real targetOpacity: 1
                 Behavior on x {
-                  enabled: separatorItem.animating && Style.duration(1) > 0
+                  enabled: separatorItem.animating && root.layoutTransition && Style.duration(1) > 0
                   SpringAnimation { spring: 4.5; damping: 0.95; mass: 1 }
                 }
                 Rectangle {
@@ -2165,16 +2240,16 @@ Item {
                 required property string modelData
                 readonly property string specialId: modelData
                 property string screenName: dockWindow.outputName
-                width: root.slotWidth * targetScale
-                height: 70
+                width: root.effSlotWidth * targetScale
+                height: root.itemHeight
                 x: 0
-                rotation: root.vertical ? 90 : 0
+                rotation: root.vertical ? -90 : 0
                 property bool animating: false
                 property alias targetScale: specialItem.targetScale
                 property alias targetLift: specialItem.targetLift
                 property alias targetOpacity: specialItem.targetOpacity
                 Behavior on x {
-                  enabled: specialWrapper.animating && Style.duration(1) > 0
+                  enabled: specialWrapper.animating && root.layoutTransition && Style.duration(1) > 0
                   SpringAnimation { spring: 4.5; damping: 0.95; mass: 1 }
                 }
                 Component.onCompleted: {
@@ -2196,7 +2271,7 @@ Item {
                     : ({ id: "trash", name: strings.t("special.trash"), icon: root.trashFull ? "user-trash-full" : "user-trash", pinned: false, running: false, special: true })
                   iconSize: root.iconSize
                   dockSide: root.dockSide
-                  animationEnabled: specialWrapper.animating
+                  animationEnabled: specialWrapper.animating && root.layoutTransition
                   iconSourceOverride: ""
                   onItemLeftClicked: function(clickedItem) {
                     if (specialWrapper.specialId === "downloads") root.openDownloads()
@@ -2323,10 +2398,12 @@ Item {
 
   DockMenu {
     id: dockMenu
+    screen: root.activeScreen
     autoHideEnabled: root.autoHide
+    trashFull: root.trashFull
     dockSide: root.dockSide
     iconSource: root.iconSourceFor(dockMenu.itemData ? dockMenu.itemData.id : "")
-    onActionTriggered: function(actionName, selectedItem) { root.menuAction(actionName, selectedItem) }
+    onActionTriggered: function(actionName, selectedItem, arg) { root.menuAction(actionName, selectedItem, arg) }
     onOpenedChanged: if (!opened) root.menuOpen = false
   }
 
@@ -2589,8 +2666,6 @@ Item {
       width: root.iconSize * root.ghostScale + 16
       height: root.iconSize * root.ghostScale + 16
       opacity: root.ghostOpacity
-      Behavior on x { enabled: Style.duration(1) > 0; SpringAnimation { spring: 4.5; damping: 0.95; mass: 1 } }
-      Behavior on y { enabled: Style.duration(1) > 0; SpringAnimation { spring: 4.5; damping: 0.95; mass: 1 } }
       Behavior on opacity { NumberAnimation { duration: Style.duration(180); easing.type: Easing.OutCubic } }
 
       Rectangle {

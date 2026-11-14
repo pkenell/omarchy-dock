@@ -168,7 +168,7 @@ test("separator keeps its own width and does not magnify", () => {
   const center = rest.placements.__separator__.x + opts.separatorWidth / 2
   const mag = model.computeLayout(flow, center, opts)
   assert.equal(mag.placements.__separator__.scale, 1)
-  assert.equal(mag.placements.__separator__.lift, 0)
+  assert.equal(mag.placements.__separator__.width, opts.separatorWidth)
   assert.equal(mag.placements.a.scale >= 1, true)
 })
 
@@ -241,43 +241,80 @@ test("orderPinned keeps only pinned members in order", () => {
 
 test("computeLayout rests evenly with no cursor and grows with magnification", () => {
   const opts = model.LAYOUT_OPTS
-  const rest = model.computeLayout([{ id: "a" }, { id: "b" }, { id: "c" }], -1, opts)
+  const flow = [{ id: "a" }, { id: "b" }, { id: "c" }]
+  const rest = model.computeLayout(flow, -1, opts)
   assert.equal(rest.totalWidth, opts.slotWidth * 3 + opts.spacing * 2 + 2 * opts.sidePadding)
-  assert.deepEqual({ ...rest.placements.a }, { x: 0, scale: 1, lift: 0, phantom: false })
+  assert.equal(rest.restWidth, opts.slotWidth * 3 + opts.spacing * 2)
+  assert.deepEqual({ ...rest.placements.a }, { x: 0, width: opts.slotWidth, scale: 1, lift: 0, phantom: false })
   assert.equal(rest.placements.b.x, opts.slotWidth + opts.spacing)
   assert.equal(rest.placements.c.x, 2 * (opts.slotWidth + opts.spacing))
 
   const center = rest.placements.b.x + opts.slotWidth / 2
-  const mag = model.computeLayout([{ id: "a" }, { id: "b" }, { id: "c" }], center, opts)
+  const mag = model.computeLayout(flow, center, opts)
   assert.ok(mag.placements.b.scale > 1, "hovered icon magnifies")
   assert.ok(mag.placements.a.scale < mag.placements.b.scale, "neighbors are smaller than hovered icon")
   assert.ok(mag.totalWidth > rest.totalWidth, "dock grows as the cursor approaches")
-  assert.ok(mag.placements.b.lift > 0, "magnified icon lifts")
 })
 
-test("computeLayout keeps icons from overlapping under magnification", () => {
-  const opts = model.LAYOUT_OPTS
-  const flow = [{ id: "a" }, { id: "b" }, { id: "c" }]
-  const center = opts.slotWidth + opts.slotWidth / 2
-  const result = model.computeLayout(flow, center, opts)
-  for (const id of ["a", "b", "c"]) {
-    const p = result.placements[id]
-    const painted = opts.iconSize * p.scale
-    const left = p.x + (opts.slotWidth * p.scale - painted) / 2
-    assert.ok(left + painted <= p.x + opts.slotWidth * p.scale, `icon ${id} fits in its slot`)
+test("magnified icons sit edge to edge for any hoverScale", () => {
+  const flow = Array.from({ length: 8 }, (_, i) => ({ id: "i" + i }))
+  for (const hoverScale of [1.2, 1.6, 2.0]) {
+    const opts = { ...model.LAYOUT_OPTS, hoverScale }
+    for (let cursor = 0; cursor <= 8 * (opts.slotWidth + opts.spacing); cursor += 7) {
+      const { placements } = model.computeLayout(flow, cursor, opts)
+      for (let i = 0; i < flow.length - 1; i++) {
+        const a = placements["i" + i]
+        const b = placements["i" + (i + 1)]
+        assert.ok(Math.abs(b.x - (a.x + a.width + opts.spacing)) < 1e-9, `gap at ${i} (scale ${hoverScale}, cursor ${cursor})`)
+      }
+    }
   }
 })
 
-test("single magnified icon is centered in the dock", () => {
+test("magnification stays centered on the resting row", () => {
+  const opts = { ...model.LAYOUT_OPTS, hoverScale: 1.8 }
+  const flow = Array.from({ length: 5 }, (_, i) => ({ id: "i" + i }))
+  const r = model.computeLayout(flow, 20, opts)
+  const first = r.placements.i0
+  const last = r.placements.i4
+  const left = -first.x
+  const right = last.x + last.width - r.restWidth
+  assert.ok(Math.abs(left - right) < 1e-9, "grows equally on both sides")
+})
+
+test("layout moves continuously with the pointer", () => {
+  const opts = { ...model.LAYOUT_OPTS, hoverScale: 1.8 }
+  const flow = Array.from({ length: 6 }, (_, i) => ({ id: "i" + i }))
+  let prev = model.computeLayout(flow, 0, opts)
+  for (let c = 1; c <= 6 * (opts.slotWidth + opts.spacing); c++) {
+    const next = model.computeLayout(flow, c, opts)
+    for (const id of Object.keys(prev.placements))
+      assert.ok(Math.abs(next.placements[id].x - prev.placements[id].x) < 2, `jump for ${id} at ${c}`)
+    prev = next
+  }
+})
+
+test("amount 0 is the resting layout and amount fades the effect", () => {
   const opts = model.LAYOUT_OPTS
-  // Cursor directly over the one slot: full magnification, no neighbors.
-  const result = model.computeLayout([{ id: "a" }], opts.slotWidth / 2, opts)
-  const p = result.placements.a
-  // Icon center = wrapper center = slot center; flowWidth = scaled slot width.
-  assert.ok(Math.abs(p.x + (opts.slotWidth * p.scale) / 2 - result.flowWidth / 2) < 0.01)
-  assert.ok(Math.abs(p.x + (opts.slotWidth * p.scale) / 2 - result.flowWidth / 2) === 0
-    ? true : result.flowWidth > 0)
-  assert.equal(result.totalWidth, p.x + opts.slotWidth * p.scale + 2 * opts.sidePadding)
+  const flow = [{ id: "a" }, { id: "b" }, { id: "c" }]
+  const rest = model.computeLayout(flow, -1, opts)
+  const off = model.computeLayout(flow, 40, { ...opts, amount: 0 })
+  assert.deepEqual(JSON.parse(JSON.stringify(off)), JSON.parse(JSON.stringify(rest)))
+  const half = model.computeLayout(flow, 40, { ...opts, amount: 0.5 })
+  const full = model.computeLayout(flow, 40, opts)
+  assert.ok(half.placements.a.scale > 1 && half.placements.a.scale < full.placements.a.scale)
+})
+
+test("slotIndexAt is stable with the placeholder anywhere", () => {
+  const opts = model.LAYOUT_OPTS
+  const stride = opts.slotWidth + opts.spacing
+  for (let phantom = 0; phantom <= 3; phantom++) {
+    const flow = model.buildFlow(["a", "b", "c"], [], "x", phantom)
+    for (let slot = 0; slot < flow.length; slot++) {
+      const cursor = slot * stride + opts.slotWidth / 2
+      assert.equal(model.slotIndexAt(cursor, flow, opts), slot)
+    }
+  }
 })
 
 test("multi-item flowWidth equals the content span", () => {
@@ -288,10 +325,11 @@ test("multi-item flowWidth equals the content span", () => {
 
 test("insertionIndexFor picks the nearest slot", () => {
   const opts = model.LAYOUT_OPTS
+  const stride = opts.slotWidth + opts.spacing
   const flow = [{ id: "a" }, { id: "b" }, { id: "c" }]
   assert.equal(model.insertionIndexFor(0, flow, opts), 0)
-  assert.equal(model.insertionIndexFor(50, flow, opts), 1)
-  assert.equal(model.insertionIndexFor(100, flow, opts), 1)
+  assert.equal(model.insertionIndexFor(stride + 1, flow, opts), 1)
+  assert.equal(model.insertionIndexFor(stride + opts.slotWidth, flow, opts), 2)
   assert.equal(model.insertionIndexFor(9999, flow, opts), 3)
 })
 
@@ -495,8 +533,12 @@ test("round-trips every persisted setting together", () => {
     screenMode: "DP-2",
     showDownloads: false,
     showTrash: true,
+    iconSize: 44,
+    hoverScale: 1.8,
   }
   const parsed = model.parseSettings(model.serializeSettings(settings), {})
+  assert.equal(parsed.iconSize, 44)
+  assert.equal(parsed.hoverScale, 1.8)
   assert.equal(parsed.autoHide, false)
   assert.equal(parsed.dockSide, "left")
   assert.equal(parsed.screenMode, "DP-2")
@@ -522,4 +564,14 @@ test("computes the dock surface position on each output", () => {
   assert.deepEqual(at("left", 1920, 1200, 78, 600, 4, 0), { x: 4, y: 300 })
   assert.deepEqual(at("bottom", 2560, 1440, 600, 78, 4, 0), { x: 980, y: 1358 })
   assert.deepEqual(at("bottom", 1920, 1200, 600, 78, 4, 82), { x: 660, y: 1200 })
+})
+
+test("iconSize and hoverScale are optional, clamped settings", () => {
+  const d = model.parseSettings("", {})
+  assert.equal(d.iconSize, model.LAYOUT_OPTS.iconSize)
+  assert.equal(d.hoverScale, model.LAYOUT_OPTS.hoverScale)
+  const p = model.parseSettings('{"iconSize": 9999, "hoverScale": 0.2}', {})
+  assert.equal(p.iconSize, 128)
+  assert.equal(p.hoverScale, 1)
+  assert.equal(model.parseSettings('{"iconSize": "x"}', { iconSize: 40 }).iconSize, 40)
 })

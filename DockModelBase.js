@@ -11,14 +11,23 @@ var TRASH_ID = "trash"
 
 var lastWrittenHash = null
 
+// The single source of truth for dock geometry. DockPanelBase takes its
+// property defaults from here; iconSize and hoverScale can also be set in
+// dock-settings.json (see parseSettings).
 var LAYOUT_OPTS = {
-    slotWidth: 58,
-    spacing: 8,
-    iconSize: 50,
-    hoverScale: 1.36,
-    radius: 104,
-    sidePadding: 18,
-    separatorWidth: 14
+    slotWidth: 32,
+    spacing: 4,
+    iconSize: 30,
+    hoverScale: 1.5,
+    radius: 96,
+    sidePadding: 8,
+    separatorWidth: 8
+}
+
+function clampNumber(value, min, max, fallback) {
+    var n = Number(value)
+    if (typeof value === "boolean" || value === null || value === "" || !isFinite(n)) return fallback
+    return Math.max(min, Math.min(max, n))
 }
 
 function normalizeId(value) {
@@ -247,95 +256,85 @@ function orderPinned(order, pinnedIds) {
     return result
 }
 
-// Smooth pointer wave used by the dock. The cosine falloff keeps the hover
-// response soft at both ends of the reach; the matching ramp is its integral,
-// so neighboring slots move exactly far enough to make room for the growth.
+// Smooth pointer wave used by the dock: 1 at the pointer, 0 at `reach`.
 function hoverFalloff(distance, reach) {
     var t = Math.abs(distance) / reach
     if (t >= 1) return 0
     return 0.5 * (1 + Math.cos(Math.PI * t))
 }
 
-function hoverRamp(distance, reach) {
-    var u = distance / reach
-    if (u >= 1) return 0.5
-    if (u <= -1) return -0.5
-    return 0.5 * u + Math.sin(Math.PI * u) / (2 * Math.PI)
-}
-
-// Continuous layout driven by the cursor. Slot centers are measured from the
-// resting row, then every slot receives a scale and a centered shift. This is
-// important: measuring each center after the previous slot has grown makes the
-// hover wave feed back into itself and causes the row to wobble at the edges.
+// Pointer-driven magnification. The pointer is expressed in the *resting*
+// frame (slots packed with no magnification), which never moves, so the
+// layout is a pure function of the pointer and cannot feed back into itself.
+// Every slot gets a scale from the wave, then the scaled slots are packed
+// edge to edge with the fixed spacing (no gaps, no overlap, whatever
+// hoverScale is) and the packed row is re-centered on the resting row, the
+// way the macOS dock grows symmetrically. `opts.amount` (0..1) fades the
+// effect in and out without changing the geometry model.
 function computeLayout(flow, cursorX, opts) {
     opts = opts || LAYOUT_OPTS
-    var placements = {}
-    var cursorValid = typeof cursorX === "number" && cursorX >= 0
+    var amount = opts.amount === undefined ? 1 : Math.max(0, Math.min(1, opts.amount))
     var reach = Math.max(opts.slotWidth, opts.radius)
-    var growth = opts.iconSize * (opts.hoverScale - 1)
-    var spread = growth * (reach / opts.slotWidth)
-    var resting = []
-    var x = 0
+    var active = typeof cursorX === "number" && cursorX >= 0 && amount > 0
+    var entries = []
+    var restX = 0
+    var packedX = 0
 
     for (var i = 0; i < flow.length; i++) {
         var item = flow[i]
         var slot = item.separator ? opts.separatorWidth : opts.slotWidth
-        resting.push({ item: item, x: x, slot: slot, center: x + slot / 2 })
-        x += slot + opts.spacing
-    }
-
-    var contentWidth = Math.max(0, x - opts.spacing)
-    var pointer = cursorValid ? cursorX : -1
-    var startShift = cursorValid ? spread * hoverRamp(-pointer, reach) : 0
-    var endShift = cursorValid ? spread * hoverRamp(contentWidth - pointer, reach) : 0
-    var recenter = (startShift + endShift) / 2
-    var lastEnd = 0
-    var grownWidth = 0
-
-    for (var j = 0; j < resting.length; j++) {
-        var entry = resting[j]
-        var item = entry.item
         var scale = 1
-        var lift = 0
-        var shift = 0
-        if (cursorValid && !item.separator) {
-            var distance = entry.center - pointer
-            scale = 1 + (opts.hoverScale - 1) * hoverFalloff(distance, reach)
-            shift = spread * hoverRamp(distance, reach) - recenter
-            lift = (scale - 1) * opts.iconSize * 0.5
-        }
-        // The delegate itself widens around its center, so its resting x plus
-        // the wave shift is already the correct left edge. Keeping that edge
-        // stable also keeps a one-icon dock centered while it magnifies.
-        var placedX = entry.x + shift
-        placements[item.id] = { x: placedX, scale: scale, lift: lift, phantom: !!item.phantom }
-        lastEnd = Math.max(lastEnd, placedX + entry.slot * scale)
-        grownWidth += entry.slot * (scale - 1)
+        if (active && !item.separator)
+            scale = 1 + (opts.hoverScale - 1) * amount * hoverFalloff(restX + slot / 2 - cursorX, reach)
+        var width = slot * scale
+        entries.push({ item: item, x: packedX, width: width, scale: scale })
+        restX += slot + opts.spacing
+        packedX += width + opts.spacing
     }
 
-    var expandedWidth = contentWidth + grownWidth
-    return { placements: placements, flowWidth: expandedWidth, totalWidth: expandedWidth + 2 * opts.sidePadding }
+    var restWidth = flow.length ? restX - opts.spacing : 0
+    var packedWidth = flow.length ? packedX - opts.spacing : 0
+    var recenter = (packedWidth - restWidth) / 2
+    var placements = {}
+    for (var j = 0; j < entries.length; j++) {
+        var e = entries[j]
+        placements[e.item.id] = {
+            x: e.x - recenter, width: e.width, scale: e.scale, lift: 0, phantom: !!e.item.phantom
+        }
+    }
+    return {
+        placements: placements,
+        restWidth: restWidth,
+        flowWidth: packedWidth,
+        totalWidth: packedWidth + 2 * opts.sidePadding
+    }
 }
 
-// Returns the flow index the cursor currently falls over (0..flow.length),
-// using the same scaled geometry as the rendered layout so the drop lands
-// on the icon the user sees.
+// Index of the resting slot under the pointer (flow.length past the end).
+// Works on the resting frame, so it is the same with or without
+// magnification. Pass the flow exactly as displayed (placeholder included):
+// the slot position then equals the insertion index.
+function slotIndexAt(cursorX, flow, opts) {
+    opts = opts || LAYOUT_OPTS
+    if (!flow || flow.length === 0 || typeof cursorX !== "number" || cursorX < 0) return 0
+    var x = 0
+    for (var i = 0; i < flow.length; i++) {
+        var slot = flow[i].separator ? opts.separatorWidth : opts.slotWidth
+        if (cursorX < x + slot + opts.spacing / 2) return i
+        x += slot + opts.spacing
+    }
+    return flow.length
+}
+
+// Nearest-slot insertion index in the resting frame.
 function insertionIndexFor(cursorX, flow, opts) {
     opts = opts || LAYOUT_OPTS
     if (!flow || flow.length === 0) return 0
     var x = 0
-    var cursorValid = typeof cursorX === "number" && cursorX >= 0
     for (var i = 0; i < flow.length; i++) {
-        var item = flow[i]
-        var slot = item.separator ? opts.separatorWidth : opts.slotWidth
-        var center = x + slot / 2
-        var scale = 1
-        if (cursorValid) {
-            var reach = Math.max(opts.slotWidth, opts.radius)
-            scale = 1 + (opts.hoverScale - 1) * hoverFalloff(cursorX - center, reach)
-        }
-        if (cursorX < x + slot * scale / 2) return i
-        x += slot * scale + opts.spacing
+        var slot = flow[i].separator ? opts.separatorWidth : opts.slotWidth
+        if (cursorX < x + slot / 2) return i
+        x += slot + opts.spacing
     }
     return flow.length
 }
@@ -513,7 +512,9 @@ function parseSettings(text, fallback) {
         dockSide: normalizeSide(defaults.dockSide),
         screenMode: normalizeScreenMode(defaults.screenMode),
         showDownloads: flagSetting(undefined, defaults.showDownloads),
-        showTrash: flagSetting(undefined, defaults.showTrash)
+        showTrash: flagSetting(undefined, defaults.showTrash),
+        iconSize: clampNumber(defaults.iconSize, 16, 128, LAYOUT_OPTS.iconSize),
+        hoverScale: clampNumber(defaults.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
     }
     var source = String(text || "").trim()
     if (!source) return base
@@ -526,8 +527,12 @@ function parseSettings(text, fallback) {
             dockSide: base.dockSide,
             screenMode: base.screenMode,
             showDownloads: base.showDownloads,
-            showTrash: base.showTrash
+            showTrash: base.showTrash,
+            iconSize: base.iconSize,
+            hoverScale: base.hoverScale
         }
+        if (parsed.iconSize !== undefined) out.iconSize = clampNumber(parsed.iconSize, 16, 128, base.iconSize)
+        if (parsed.hoverScale !== undefined) out.hoverScale = clampNumber(parsed.hoverScale, 1, 3, base.hoverScale)
         if (typeof parsed.autoHide === "boolean") out.autoHide = parsed.autoHide
         else if (typeof parsed.autoHide === "string") out.autoHide = parsed.autoHide === "true"
         if (parsed.dockSide !== undefined) out.dockSide = normalizeSide(parsed.dockSide)
@@ -552,7 +557,9 @@ function serializeSettings(settings) {
         dockSide: side,
         screenMode: screenMode,
         showDownloads: showDownloads,
-        showTrash: showTrash
+        showTrash: showTrash,
+        iconSize: clampNumber(settings && settings.iconSize, 16, 128, LAYOUT_OPTS.iconSize),
+        hoverScale: clampNumber(settings && settings.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
     }, null, 2) + "\n"
 }
 
@@ -649,6 +656,7 @@ if (typeof module !== "undefined" && module.exports) {
         orderPinned: orderPinned,
         computeLayout: computeLayout,
         insertionIndexFor: insertionIndexFor,
+        slotIndexAt: slotIndexAt,
         isWebAppClass: isWebAppClass,
         desktopIdForWindow: desktopIdForWindow,
         entryFor: entryFor,

@@ -35,7 +35,7 @@ Item {
   signal tooltipRequested(var itemData, bool visible, point center)
   signal hoverPointerChanged(var itemData, bool inside, point position)
 
-  width: iconSize + 8
+  width: iconSize + 2
   height: iconSize + 18
 
   function iconSource() {
@@ -169,6 +169,13 @@ Item {
         root.isDragging = true
       if (root.leftPressed && root.isDragging)
         root.dragMoved(root.itemData, Qt.point(mouseX, mouseY))
+    }
+    // A cancelled grab (item hidden, window lost focus) never delivers a
+    // release; finish the drag so the dock cannot be left in drag state.
+    onCanceled: {
+      if (root.isDragging) root.dragFinished(root.itemData, Qt.point(mouseX, mouseY))
+      root.isDragging = false
+      root.leftPressed = false
     }
     onReleased: function(mouse) {
       if (mouse.button === Qt.RightButton) {

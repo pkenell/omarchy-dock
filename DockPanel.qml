@@ -16,12 +16,5 @@ Item {
     shell: root.shell
     pluginRegistry: root.pluginRegistry
     manifest: root.manifest
-    dockHeight: 78
-    bottomMargin: 4
-    iconSize: 54
-    slotWidth: 60
-    slotSpacing: 6
-    sidePadding: 12
-    separatorWidth: 12
   }
 }
