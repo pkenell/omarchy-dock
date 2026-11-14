@@ -8,7 +8,7 @@ inställningar, papperskorgen, uppdelning av `DockPanelBase.qml`).
 Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-dock/issues:
 
 - #1 ~~Inställningspanel~~ (klart)
-- #2 Ikonbytardialogen visar få förhandsvisningar
+- #2 ~~Ikonbytardialogen visar få förhandsvisningar~~ (klart)
 - #3 Docken ryckte vid första ikonen
 - #4 ~~`saveSettings()` skriver över `dock-settings.json`~~ (klart)
 - #5 Första-parts-dockens lager överlappar
