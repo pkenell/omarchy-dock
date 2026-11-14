@@ -245,7 +245,7 @@ test("computeLayout rests evenly with no cursor and grows with magnification", (
   const rest = model.computeLayout(flow, -1, opts)
   assert.equal(rest.totalWidth, opts.slotWidth * 3 + opts.spacing * 2 + 2 * opts.sidePadding)
   assert.equal(rest.restWidth, opts.slotWidth * 3 + opts.spacing * 2)
-  assert.deepEqual({ ...rest.placements.a }, { x: 0, width: opts.slotWidth, scale: 1, lift: 0, phantom: false })
+  assert.deepEqual({ ...rest.placements.a }, { x: 0, width: opts.slotWidth, scale: 1, phantom: false })
   assert.equal(rest.placements.b.x, opts.slotWidth + opts.spacing)
   assert.equal(rest.placements.c.x, 2 * (opts.slotWidth + opts.spacing))
 

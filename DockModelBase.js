@@ -303,7 +303,7 @@ function computeLayout(flow, cursorX, opts) {
     for (var j = 0; j < entries.length; j++) {
         var e = entries[j]
         placements[e.item.id] = {
-            x: e.x - recenter, width: e.width, scale: e.scale, lift: 0, phantom: !!e.item.phantom
+            x: e.x - recenter, width: e.width, scale: e.scale, phantom: !!e.item.phantom
         }
     }
     return {

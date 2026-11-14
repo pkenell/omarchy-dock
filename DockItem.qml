@@ -17,7 +17,6 @@ Item {
   // Targets driven by the panel's layout engine. Every change is animated so
   // nothing ever teleports.
   property real targetScale: 1
-  property real targetLift: 0
   property real targetOpacity: 1
   property bool animationEnabled: true
   property bool draggable: true
@@ -27,7 +26,7 @@ Item {
   property string iconSourceOverride: ""
   property point pressPosition: Qt.point(0, 0)
   // macOS-style launch bounce: isolated vertical offset added on top of the
-  // hover lift so magnification/scale are never disturbed. Spring-like damped
+  // magnification so scale is never disturbed. Spring-like damped
   // motion (explicit decaying keyframes, ~950ms total, 3 upward impulses).
   property real launchBounceHeight: 28
   property real bounceOffset: 0
@@ -67,15 +66,9 @@ Item {
     return Item.Bottom
   }
 
-  Behavior on y {
-    enabled: root.animationEnabled && Style.duration(1) > 0
-    SpringAnimation { spring: 4.5; damping: 0.95; mass: 1 }
-  }
-  y: -root.targetLift
   // NOTE: DockItem is placed via anchors.centerIn by the delegate, and
-  // anchors take precedence over x/y — so vertical motion must go through
-  // verticalCenterOffset, not y. (The pre-existing y/targetLift binding is
-  // left untouched.) bounceOffset is negative-up, matching macOS motion.
+  // anchors take precedence over x/y, so vertical motion goes through
+  // verticalCenterOffset. bounceOffset is negative-up, matching macOS motion.
   // The icon sits at the top of the box with the running dot below it, so on a
   // bottom dock the box is shifted down by half the dot area to center the icon.
   anchors.verticalCenterOffset: root.bounceOffset + (root.sideDock ? 0 : Math.round((root.height - root.iconSize) / 2))
@@ -88,7 +81,7 @@ Item {
 
   // One-shot launch bounce. Runs to completion once started; never driven by
   // the running state, so a mid-animation state refresh cannot restart it.
-  // Always finishes at exactly 0 so hover lift positioning is never corrupted.
+  // Always finishes at exactly 0 so the icon's position is never corrupted.
   SequentialAnimation {
     id: launchBounceAnim
     NumberAnimation { target: root; property: "bounceOffset"; from: 0; to: -root.launchBounceHeight; duration: Style.duration(180); easing.type: Easing.OutCubic }
