@@ -149,7 +149,9 @@ Item {
   // Slide state for auto-hide. The PanelWindow stays mapped when enabled;
   // this flag drives the bottomMargin translation so the glide is animated.
   property bool autoHidden: false
-  property int dockHeight: root.itemHeight + 14
+  // Icon plus `dockPadding` of air (half above, half below); the running dot lives in the lower air.
+  property int dockPadding: DockModel.LAYOUT_OPTS.dockPadding
+  property int dockHeight: root.iconSize + root.dockPadding
   property int bottomMargin: 6
   // Dock geometry is computed in screen coordinates (dockWindow fills the
   // screen) instead of conditional anchors. Switching sides cannot leave a
@@ -483,7 +485,8 @@ Item {
       showTrash: root.showTrash,
       iconSize: root.iconSize,
       hoverScale: root.hoverScale,
-      backgroundOpacity: root.backgroundOpacity
+      backgroundOpacity: root.backgroundOpacity,
+      dockPadding: root.dockPadding
     }, settingsFile.text())
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
@@ -1241,6 +1244,7 @@ Item {
     root.iconSize = DockModel.LAYOUT_OPTS.iconSize
     root.hoverScale = DockModel.LAYOUT_OPTS.hoverScale
     root.backgroundOpacity = DockModel.LAYOUT_OPTS.backgroundOpacity
+    root.dockPadding = DockModel.LAYOUT_OPTS.dockPadding
     root.saveSettings()
   }
 
@@ -1829,7 +1833,8 @@ Item {
       var parsed = DockModel.parseSettings(text(), {
         autoHide: true, dockSide: "bottom", screenMode: "all", showDownloads: true, showTrash: true,
         iconSize: DockModel.LAYOUT_OPTS.iconSize, hoverScale: DockModel.LAYOUT_OPTS.hoverScale,
-        backgroundOpacity: DockModel.LAYOUT_OPTS.backgroundOpacity
+        backgroundOpacity: DockModel.LAYOUT_OPTS.backgroundOpacity,
+        dockPadding: DockModel.LAYOUT_OPTS.dockPadding
       })
       if (!root.settingsLoaded) {
         root.settingsLoaded = true
@@ -1845,6 +1850,7 @@ Item {
       root.iconSize = parsed.iconSize
       root.hoverScale = parsed.hoverScale
       root.backgroundOpacity = parsed.backgroundOpacity
+      root.dockPadding = parsed.dockPadding
       if (root.dockSide !== parsed.dockSide) root.dockSide = parsed.dockSide
       if (root.screenMode !== parsed.screenMode) root.screenMode = parsed.screenMode
       // If auto-hide is turned off, ensure the dock is fully revealed.
@@ -1864,6 +1870,7 @@ Item {
       root.iconSize = DockModel.LAYOUT_OPTS.iconSize
       root.hoverScale = DockModel.LAYOUT_OPTS.hoverScale
       root.backgroundOpacity = DockModel.LAYOUT_OPTS.backgroundOpacity
+      root.dockPadding = DockModel.LAYOUT_OPTS.dockPadding
     }
   }
 

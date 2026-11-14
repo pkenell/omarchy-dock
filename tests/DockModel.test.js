@@ -598,3 +598,12 @@ test("backgroundOpacity is clamped, defaults to 0.5 and round-trips", () => {
   assert.equal(JSON.parse(model.serializeSettings({ backgroundOpacity: 0.8 })).backgroundOpacity, 0.8)
   assert.equal(JSON.parse(model.serializeSettings({})).backgroundOpacity, 0.5)
 })
+
+test("dockPadding defaults to 22, is clamped and round-trips", () => {
+  assert.equal(model.parseSettings("{}", {}).dockPadding, 22)
+  assert.equal(model.parseSettings('{"dockPadding":30}', {}).dockPadding, 30)
+  assert.equal(model.parseSettings('{"dockPadding":999}', {}).dockPadding, 48)
+  assert.equal(model.parseSettings('{"dockPadding":0}', {}).dockPadding, 8)
+  assert.equal(JSON.parse(model.serializeSettings({ dockPadding: 14 })).dockPadding, 14)
+  assert.equal(JSON.parse(model.serializeSettings({})).dockPadding, 22)
+})

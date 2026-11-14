@@ -16,6 +16,7 @@
   "settings.iconSize": "Icon size",
   "settings.hoverScale": "Magnification",
   "settings.hoverOff": "Off",
+  "settings.padding": "Dock padding",
   "settings.background": "Background",
   "settings.transparent": "Transparent",
   "settings.solid": "Solid",
