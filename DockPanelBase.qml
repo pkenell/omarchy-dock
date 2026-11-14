@@ -481,7 +481,7 @@ Item {
       showTrash: root.showTrash,
       iconSize: root.iconSize,
       hoverScale: root.hoverScale
-    })
+    }, settingsFile.text())
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
     // settingsFile uses atomicWrites: setText writes to a sibling temp and
