@@ -21,8 +21,8 @@ Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-d
   `magnifyReach` som inställning. Idag finns bara `iconSize` och `hoverScale`.
 - [ ] Ta bort död kod i `DockItem.qml`: `y: -targetLift`, dess `Behavior` och
   `targetLift`-plumbingen (ankring via `anchors.centerIn` gör att `y` aldrig gäller).
-- [ ] Menyn: fler språk än `i18n/en.json`. Kontrollera att nya nycklar
-  (`menu.keepInDock`, `menu.closeAll` m.fl.) finns överallt.
+- [ ] Fler språk än engelska och svenska (`i18n/en.json`, `i18n/sv.json`). Nya nycklar
+  måste läggas till i alla språkfiler.
 - [ ] Fönstertitlar i menyn: begränsa längd och antal (idag max 8, elidering).
 
 ## Uppdelning av `DockPanelBase.qml` (2 208 rader kvar)
