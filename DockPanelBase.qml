@@ -127,7 +127,7 @@ Item {
   property int peekPx: 0
   // Hide is suppressed while any transient UI is active so the dock does not
   // vanish under a menu, preview, picker or drag.
-  property bool hideSuppressed: root.menuOpen || root.pickerOpen || root.previewVisible || root.floatingId !== "" || !!(root.altTab && root.altTab.active)
+  property bool hideSuppressed: root.menuOpen || root.pickerOpen || root.settingsOpen || root.previewVisible || root.floatingId !== "" || !!(root.altTab && root.altTab.active)
   property bool edgeHovered: false
   // Combined engagement — dockHovered OR edgeHovered. While true, hide is
   // suppressed and must not be scheduled. Extracted to avoid the fragile 5px
@@ -279,6 +279,8 @@ Item {
   // iconSize and hoverScale can be overridden in dock-settings.json.
   property int iconSize: DockModel.LAYOUT_OPTS.iconSize
   property real hoverScale: DockModel.LAYOUT_OPTS.hoverScale
+  property real backgroundOpacity: DockModel.LAYOUT_OPTS.backgroundOpacity
+  property bool settingsOpen: false
   property int magnifyReach: DockModel.LAYOUT_OPTS.radius
   // 0..1, animated: how much of the pointer magnification is applied. The
   // layout is a pure function of (pointer, magnifyAmount), so the row never
@@ -297,7 +299,7 @@ Item {
   readonly property int itemHeight: root.iconSize + 18
   // On a side dock the row runs vertically, so each icon needs room for its
   // running-dot below it along that axis.
-  readonly property int effSlotWidth: root.vertical ? Math.max(root.slotWidth, root.iconSize + 10) : root.slotWidth
+  readonly property int effSlotWidth: root.vertical ? Math.max(root.slotWidth, root.iconSize + 10) : Math.max(root.slotWidth, root.iconSize + 2)
   readonly property real magnifyHeadroom: (root.autoHide && root.autoHidden) ? 0 : Math.ceil(root.iconSize * (root.hoverScale - 1)) + 6
   readonly property var layoutOpts: ({
     slotWidth: root.effSlotWidth,
@@ -480,7 +482,8 @@ Item {
       showDownloads: root.showDownloads,
       showTrash: root.showTrash,
       iconSize: root.iconSize,
-      hoverScale: root.hoverScale
+      hoverScale: root.hoverScale,
+      backgroundOpacity: root.backgroundOpacity
     }, settingsFile.text())
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
@@ -1210,6 +1213,7 @@ Item {
       root.dockSide = action.slice(7).toLowerCase()
       return
     }
+    if (action === "openSettings") { root.openSettings(); return }
     if (action === "focusWindow") { root.focusWindowAddress(arg); return }
     if (!item) return
     if (action === "open") {
@@ -1224,6 +1228,20 @@ Item {
     else if (action === "setIcon") root.openIconPicker(item.id, item.name, false, true)
     else if (action === "manageIcons") root.openIconManager(item)
     if (action === "togglePin") { refreshItems(); savePinned() }
+  }
+
+  function openSettings() {
+    root.hidePreview()
+    settingsPanel.requestedPosition = dockMenu.requestedPosition
+    root.settingsOpen = true
+    settingsPanel.opened = true
+  }
+
+  function resetDockLook() {
+    root.iconSize = DockModel.LAYOUT_OPTS.iconSize
+    root.hoverScale = DockModel.LAYOUT_OPTS.hoverScale
+    root.backgroundOpacity = DockModel.LAYOUT_OPTS.backgroundOpacity
+    root.saveSettings()
   }
 
   function openIconPicker(appId, appName, fromManage, fromDockMenu) {
@@ -1810,7 +1828,8 @@ Item {
     onLoaded: {
       var parsed = DockModel.parseSettings(text(), {
         autoHide: true, dockSide: "bottom", screenMode: "all", showDownloads: true, showTrash: true,
-        iconSize: DockModel.LAYOUT_OPTS.iconSize, hoverScale: DockModel.LAYOUT_OPTS.hoverScale
+        iconSize: DockModel.LAYOUT_OPTS.iconSize, hoverScale: DockModel.LAYOUT_OPTS.hoverScale,
+        backgroundOpacity: DockModel.LAYOUT_OPTS.backgroundOpacity
       })
       if (!root.settingsLoaded) {
         root.settingsLoaded = true
@@ -1825,6 +1844,7 @@ Item {
       root.showTrash = parsed.showTrash
       root.iconSize = parsed.iconSize
       root.hoverScale = parsed.hoverScale
+      root.backgroundOpacity = parsed.backgroundOpacity
       if (root.dockSide !== parsed.dockSide) root.dockSide = parsed.dockSide
       if (root.screenMode !== parsed.screenMode) root.screenMode = parsed.screenMode
       // If auto-hide is turned off, ensure the dock is fully revealed.
@@ -1843,6 +1863,7 @@ Item {
       root.screenMode = "all"
       root.iconSize = DockModel.LAYOUT_OPTS.iconSize
       root.hoverScale = DockModel.LAYOUT_OPTS.hoverScale
+      root.backgroundOpacity = DockModel.LAYOUT_OPTS.backgroundOpacity
     }
   }
 
@@ -2051,6 +2072,13 @@ Item {
     iconSource: root.iconSourceFor(dockMenu.itemData ? dockMenu.itemData.id : "")
     onActionTriggered: function(actionName, selectedItem, arg) { root.menuAction(actionName, selectedItem, arg) }
     onOpenedChanged: if (!opened) root.menuOpen = false
+  }
+
+  SettingsPanel {
+    id: settingsPanel
+    screen: root.activeScreen
+    dock: root
+    onOpenedChanged: if (!opened) root.settingsOpen = false
   }
 
   IconPickerPanel {

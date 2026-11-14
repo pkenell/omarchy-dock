@@ -71,6 +71,10 @@ Item {
   DockItem {
     id: dockItem
     anchors.centerIn: parent
+    // The icon sits at the top of its box with the running dot below it. On a
+    // side dock that would shift every icon up inside the pill, so move the box
+    // down by half the dot area to center the icon itself.
+    anchors.verticalCenterOffset: dock.vertical ? Math.round((dock.itemHeight - dock.iconSize) / 2) : 0
     itemData: wrapper.liveData
     iconSize: dock.iconSize
     dockSide: dock.dockSide

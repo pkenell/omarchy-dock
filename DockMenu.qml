@@ -64,6 +64,7 @@ PanelWindow {
       rows.push(row("item", strings.t("menu.bottom"), "setSideBottom", { checked: dockSide === "bottom", mark: true, indent: true }))
       rows.push(row("item", strings.t("menu.left"), "setSideLeft", { checked: dockSide === "left", mark: true, indent: true }))
       rows.push(row("item", strings.t("menu.right"), "setSideRight", { checked: dockSide === "right", mark: true, indent: true }))
+      rows.push(row("item", strings.t("menu.settings"), "openSettings", { indent: true }))
     }
     if (!isSpecial && isRunning) {
       rows.push(row("sep"))
