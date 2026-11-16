@@ -103,12 +103,15 @@ Item {
   // Downloads and Trash stay fixed after the separator. Both default on.
   property bool showDownloads: true
   property bool showTrash: true
+  // The app drawer button, first in the dock.
+  property bool showLauncher: true
   // The fixed section only exists when at least one special item is on; each
   // output's dock row repeats it, so the section is model-driven rather than a
   // single static set of items.
   readonly property bool showSeparator: root.showDownloads || root.showTrash
   readonly property var specialAppIds: {
     var ids = []
+    if (root.showLauncher) ids.push(DockModel.LAUNCHER_ID)
     if (root.showDownloads) ids.push(DockModel.DOWNLOADS_ID)
     if (root.showTrash) ids.push(DockModel.TRASH_ID)
     return ids
@@ -407,6 +410,7 @@ Item {
     function altTabNext() { root.altTabNext() }
     function altTabPrev() { root.altTabPrev() }
     function altTabCancel() { root.altTabCancel() }
+    function apps(): void { root.toggleAppDrawer() }
     function toggleAutoHide(): void { root.autoHide = !root.autoHide; root.saveSettings() }
     function setAutoHide(value: string): void {
       var v = String(value).toLowerCase()
@@ -487,6 +491,7 @@ Item {
       screenMode: root.screenMode,
       showDownloads: root.showDownloads,
       showTrash: root.showTrash,
+      showLauncher: root.showLauncher,
       iconSize: root.iconSize,
       hoverScale: root.hoverScale,
       backgroundOpacity: root.backgroundOpacity,
@@ -923,6 +928,7 @@ Item {
     return DockModel.appendSpecialItems(mainFlow, {
       showDownloads: root.showDownloads,
       showTrash: root.showTrash,
+      showLauncher: root.showLauncher,
       trashFull: root.trashFull
     })
   }
@@ -939,7 +945,9 @@ Item {
         // exactly as displayed (placeholder included), so the placeholder
         // does not oscillate between two slots.
         var displayed = root.fullFlowFor(root.dockOrder, root.floatingId, current)
-        var idx = cursorX >= 0 ? DockModel.slotIndexAt(cursorX, displayed, opts) : current
+        // The flow shown starts with the app drawer button; the app order does not.
+        var lead = DockModel.leadingCount({ showLauncher: root.showLauncher })
+        var idx = cursorX >= 0 ? DockModel.slotIndexAt(cursorX, displayed, opts) - lead : current
         phantomAt = Math.max(0, Math.min(idx, baseCount))
         if (phantomAt !== root.tempDrag.index) root.markLayoutTransition()
       }
@@ -1012,6 +1020,25 @@ Item {
     // RUNNING in refreshItems), not here — so the motion coincides with the
     // app appearing, like the native Dock.
     root.launchApp(item.id, (entry && entry.name) || item.name)
+  }
+
+  // The app drawer: every installed app on one grid (see AppDrawer.qml).
+  function toggleAppDrawer() {
+    hideTimer.stop()
+    // Open on the monitor being worked on, not where the pointer last rested
+    // over a dock.
+    if (!appDrawer.opened && Hyprland.focusedMonitor) root.markActiveScreen(String(Hyprland.focusedMonitor.name))
+    appDrawer.opened = !appDrawer.opened
+  }
+
+  function isAppPinned(id) {
+    return root.pinnedIds.indexOf(DockModel.normalizeId(id)) !== -1
+  }
+
+  function toggleAppPinned(id) {
+    root.pinnedIds = DockModel.togglePinned(root.pinnedIds, id)
+    refreshItems()
+    savePinned()
   }
 
   function openDownloads() {
@@ -1229,6 +1256,7 @@ Item {
     if (action === "open") {
       if (item.id === "trash") root.openTrash()
       else if (item.id === "downloads") root.openDownloads()
+      else if (item.id === "launcher") root.toggleAppDrawer()
       return
     }
     if (action === "emptyTrash") { root.emptyTrash(); return }
@@ -1840,7 +1868,7 @@ Item {
     printErrors: false
     onLoaded: {
       var parsed = DockModel.parseSettings(text(), {
-        autoHide: true, dockSide: "bottom", screenMode: "all", showDownloads: true, showTrash: true,
+        autoHide: true, dockSide: "bottom", screenMode: "all", showDownloads: true, showTrash: true, showLauncher: true,
         iconSize: DockModel.LAYOUT_OPTS.iconSize, hoverScale: DockModel.LAYOUT_OPTS.hoverScale,
         backgroundOpacity: DockModel.LAYOUT_OPTS.backgroundOpacity,
         dockPadding: DockModel.LAYOUT_OPTS.dockPadding,
@@ -1858,6 +1886,7 @@ Item {
       // writes settings and would otherwise persist the previous values.
       root.showDownloads = parsed.showDownloads
       root.showTrash = parsed.showTrash
+      root.showLauncher = parsed.showLauncher
       root.iconSize = parsed.iconSize
       root.hoverScale = parsed.hoverScale
       root.backgroundOpacity = parsed.backgroundOpacity
@@ -1879,6 +1908,7 @@ Item {
       root.dockSide = "bottom"
       root.showDownloads = true
       root.showTrash = true
+      root.showLauncher = true
       root.screenMode = "all"
       root.iconSize = DockModel.LAYOUT_OPTS.iconSize
       root.hoverScale = DockModel.LAYOUT_OPTS.hoverScale
@@ -2094,6 +2124,12 @@ Item {
     iconSource: root.iconSourceFor(dockMenu.itemData ? dockMenu.itemData.id : "")
     onActionTriggered: function(actionName, selectedItem, arg) { root.menuAction(actionName, selectedItem, arg) }
     onOpenedChanged: if (!opened) root.menuOpen = false
+  }
+
+  AppDrawer {
+    id: appDrawer
+    screen: root.activeScreen
+    dock: root
   }
 
   SettingsPanel {

@@ -65,5 +65,11 @@
   "picker.iconsFound": {
     "one": "%1 icon found",
     "other": "%1 icons found"
-  }
+  },
+  "special.launcher": "Apps",
+  "drawer.search": "Search apps",
+  "drawer.noMatch": "No apps match \"%1\"",
+  "drawer.open": "Open",
+  "drawer.keepInDock": "Keep in Dock",
+  "drawer.removeFromDock": "Remove from Dock"
 }

@@ -8,6 +8,8 @@ var DEFAULT_PINNED = []
 var SEPARATOR_ID = "__separator__"
 var DOWNLOADS_ID = "downloads"
 var TRASH_ID = "trash"
+// The app drawer button sits first, before every app.
+var LAUNCHER_ID = "launcher"
 
 var lastWrittenHash = null
 
@@ -379,7 +381,7 @@ function desktopIdForWindow(rawId, entries) {
 
 function isSpecialId(id) {
     var value = normalizeId(id)
-    return value === SEPARATOR_ID || value === DOWNLOADS_ID || value === TRASH_ID
+    return value === SEPARATOR_ID || value === DOWNLOADS_ID || value === TRASH_ID || value === LAUNCHER_ID
 }
 
 function stripSpecialIds(ids) {
@@ -415,6 +417,22 @@ function specialSection(options) {
     return items
 }
 
+// The app drawer button, the first item of the dock. Empty when switched off.
+function leadingSection(options) {
+    var opts = options || {}
+    if (opts.showLauncher === false) return []
+    return [{
+        id: LAUNCHER_ID, name: "Apps", icon: "view-app-grid",
+        pinned: false, running: false, special: true
+    }]
+}
+
+// How many fixed items come before the apps. Slot indexes measured on the
+// displayed flow include them; the app order does not.
+function leadingCount(options) {
+    return leadingSection(options).length
+}
+
 // Appends the fixed section after the app flow. Special ids already present
 // (a stale pin, a drag) are dropped so they cannot sit among apps; the
 // phantom placeholder is left where buildFlow put it.
@@ -425,7 +443,7 @@ function appendSpecialItems(flow, options) {
         if (!item.phantom && isSpecialId(item.id)) return
         next.push(item)
     })
-    return next.concat(specialSection(options))
+    return leadingSection(options).concat(next, specialSection(options))
 }
 
 function entryFor(id, entries) {
@@ -524,6 +542,7 @@ function parseSettings(text, fallback) {
         screenMode: normalizeScreenMode(defaults.screenMode),
         showDownloads: flagSetting(undefined, defaults.showDownloads),
         showTrash: flagSetting(undefined, defaults.showTrash),
+        showLauncher: flagSetting(undefined, defaults.showLauncher),
         iconSize: clampNumber(defaults.iconSize, 16, 128, LAYOUT_OPTS.iconSize),
         hoverScale: clampNumber(defaults.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale),
         backgroundOpacity: clampNumber(defaults.backgroundOpacity, 0, 1, LAYOUT_OPTS.backgroundOpacity),
@@ -543,6 +562,7 @@ function parseSettings(text, fallback) {
             screenMode: base.screenMode,
             showDownloads: base.showDownloads,
             showTrash: base.showTrash,
+            showLauncher: base.showLauncher,
             iconSize: base.iconSize,
             hoverScale: base.hoverScale,
             backgroundOpacity: base.backgroundOpacity,
@@ -562,6 +582,7 @@ function parseSettings(text, fallback) {
         if (parsed.screenMode !== undefined) out.screenMode = normalizeScreenMode(parsed.screenMode)
         if (parsed.showDownloads !== undefined) out.showDownloads = flagSetting(parsed.showDownloads, base.showDownloads)
         if (parsed.showTrash !== undefined) out.showTrash = flagSetting(parsed.showTrash, base.showTrash)
+        if (parsed.showLauncher !== undefined) out.showLauncher = flagSetting(parsed.showLauncher, base.showLauncher)
         return out
     } catch (error) {
         return base
@@ -582,12 +603,14 @@ function serializeSettings(settings, existing) {
     var screenMode = normalizeScreenMode(settings && settings.screenMode)
     var showDownloads = flagSetting(settings && settings.showDownloads, true)
     var showTrash = flagSetting(settings && settings.showTrash, true)
+    var showLauncher = flagSetting(settings && settings.showLauncher, true)
     kept.version = 1
     kept.autoHide = value
     kept.dockSide = side
     kept.screenMode = screenMode
     kept.showDownloads = showDownloads
     kept.showTrash = showTrash
+    kept.showLauncher = showLauncher
     kept.iconSize = clampNumber(settings && settings.iconSize, 16, 128, LAYOUT_OPTS.iconSize)
     kept.hoverScale = clampNumber(settings && settings.hoverScale, 1, 3, LAYOUT_OPTS.hoverScale)
     kept.hoverEffect = normalizeHoverEffect(settings && settings.hoverEffect)
@@ -670,6 +693,9 @@ if (typeof module !== "undefined" && module.exports) {
         SEPARATOR_ID: SEPARATOR_ID,
         DOWNLOADS_ID: DOWNLOADS_ID,
         TRASH_ID: TRASH_ID,
+        LAUNCHER_ID: LAUNCHER_ID,
+        leadingSection: leadingSection,
+        leadingCount: leadingCount,
         LAYOUT_OPTS: LAYOUT_OPTS,
         normalizeId: normalizeId,
         mergeAppEntries: mergeAppEntries,
