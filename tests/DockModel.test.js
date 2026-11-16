@@ -109,7 +109,7 @@ test("toggles and reorders pins", () => {
 })
 
 test("builds pinned and running items with Downloads and Trash after a separator", () => {
-  const items = model.buildDockItems(["a"], [{ id: "a", name: "A" }, { id: "b", name: "B" }], ["a", "b"])
+  const items = model.buildDockItems(["a"], [{ id: "a", name: "A" }, { id: "b", name: "B" }], ["a", "b"], { showLauncher: false })
   assert.equal(items[0].running, true)
   assert.equal(items[0].pinned, true)
   assert.equal(items[1].id, "b")
@@ -125,24 +125,24 @@ test("builds pinned and running items with Downloads and Trash after a separator
 })
 
 test("special section stays after apps and honors showDownloads/showTrash", () => {
-  const full = model.appendSpecialItems(model.buildFlow(["a", "downloads", "b"], ["x"], "b", 1), { trashFull: false })
+  const full = model.appendSpecialItems(model.buildFlow(["a", "downloads", "b"], ["x"], "b", 1), { showLauncher: false, trashFull: false })
   assert.deepEqual(Array.from(full.map(item => item.id)), ["a", "__phantom__", "x", "__separator__", "downloads", "trash"])
   assert.equal(full[3].separator, true)
   assert.equal(full[4].icon, "folder-download")
   assert.equal(full[5].icon, "user-trash")
 
-  const fullTrash = model.buildDockItems(["pin"], [], ["run"], { showDownloads: true, showTrash: true, trashFull: true })
+  const fullTrash = model.buildDockItems(["pin"], [], ["run"], { showLauncher: false, showDownloads: true, showTrash: true, trashFull: true })
   assert.deepEqual(Array.from(fullTrash.map(item => item.id)), ["pin", "run", "__separator__", "downloads", "trash"])
   assert.equal(fullTrash[fullTrash.length - 1].icon, "user-trash-full")
 
-  const trashOnly = model.buildDockItems(["a"], [], ["b"], { showDownloads: false, showTrash: true, trashFull: true })
+  const trashOnly = model.buildDockItems(["a"], [], ["b"], { showLauncher: false, showDownloads: false, showTrash: true, trashFull: true })
   assert.deepEqual(Array.from(trashOnly.map(item => item.id)), ["a", "b", "__separator__", "trash"])
   assert.equal(trashOnly[3].icon, "user-trash-full")
 
-  const downloadsOnly = model.appendSpecialItems([{ id: "a" }], { showDownloads: true, showTrash: false })
+  const downloadsOnly = model.appendSpecialItems([{ id: "a" }], { showLauncher: false, showDownloads: true, showTrash: false })
   assert.deepEqual(Array.from(downloadsOnly.map(item => item.id)), ["a", "__separator__", "downloads"])
 
-  const appsOnly = model.buildDockItems(["downloads", "a"], [], ["trash", "b"], { showDownloads: false, showTrash: false })
+  const appsOnly = model.buildDockItems(["downloads", "a"], [], ["trash", "b"], { showLauncher: false, showDownloads: false, showTrash: false })
   assert.deepEqual(Array.from(appsOnly.map(item => item.id)), ["a", "b"])
   assert.equal(appsOnly.some(item => item.separator), false)
 })
@@ -157,7 +157,7 @@ test("special ids are stripped from the reorderable dock", () => {
 
 test("separator keeps its own width and does not magnify", () => {
   const opts = model.LAYOUT_OPTS
-  const flow = model.appendSpecialItems([{ id: "a" }, { id: "b" }], { showDownloads: true, showTrash: true })
+  const flow = model.appendSpecialItems([{ id: "a" }, { id: "b" }], { showLauncher: false, showDownloads: true, showTrash: true })
   const rest = model.computeLayout(flow, -1, opts)
   const separatorX = opts.slotWidth * 2 + opts.spacing * 2
   assert.equal(rest.placements.__separator__.x, separatorX)
@@ -170,6 +170,43 @@ test("separator keeps its own width and does not magnify", () => {
   assert.equal(mag.placements.__separator__.scale, 1)
   assert.equal(mag.placements.__separator__.width, opts.separatorWidth)
   assert.equal(mag.placements.a.scale >= 1, true)
+})
+
+test("app drawer button leads the flow and can be switched off", () => {
+  const withLauncher = model.appendSpecialItems([{ id: "a" }, { id: "b" }], { showDownloads: true, showTrash: true })
+  assert.deepEqual(Array.from(withLauncher.map(item => item.id)), ["launcher", "a", "b", "__separator__", "downloads", "trash"])
+  assert.equal(withLauncher[0].special, true)
+  assert.equal(withLauncher[0].icon, "view-app-grid")
+  assert.equal(model.leadingCount({}), 1)
+
+  const without = model.appendSpecialItems([{ id: "a" }], { showLauncher: false, showDownloads: false, showTrash: false })
+  assert.deepEqual(Array.from(without.map(item => item.id)), ["a"])
+  assert.equal(model.leadingCount({ showLauncher: false }), 0)
+
+  const alone = model.appendSpecialItems([], { showDownloads: false, showTrash: false })
+  assert.deepEqual(Array.from(alone.map(item => item.id)), ["launcher"])
+})
+
+test("launcher never joins pins or the reorderable order", () => {
+  assert.equal(model.isSpecialId("launcher"), true)
+  assert.deepEqual(Array.from(model.stripSpecialIds(["firefox", "launcher", "files"])), ["firefox", "files"])
+})
+
+test("slot index on the displayed flow minus leadingCount is the app-order index", () => {
+  const opts = model.LAYOUT_OPTS
+  const flow = model.appendSpecialItems([{ id: "a" }, { id: "b" }], { showDownloads: false, showTrash: false })
+  const pitch = opts.slotWidth + opts.spacing
+  const lead = model.leadingCount({})
+  // Over the first app (slot 1 of the displayed flow) means app index 0.
+  assert.equal(model.slotIndexAt(pitch + opts.slotWidth / 2, flow, opts) - lead, 0)
+  assert.equal(model.slotIndexAt(pitch * 2 + opts.slotWidth / 2, flow, opts) - lead, 1)
+})
+
+test("showLauncher is parsed and written back", () => {
+  assert.equal(model.parseSettings("{}", {}).showLauncher, true)
+  assert.equal(model.parseSettings('{"showLauncher": false}', {}).showLauncher, false)
+  const written = JSON.parse(model.serializeSettings({ showLauncher: false }, ""))
+  assert.equal(written.showLauncher, false)
 })
 
 test("write guard ignores matching content", () => {

@@ -4,7 +4,8 @@ import Quickshell.Wayland
 import qs.Commons
 import "DockModel.js" as DockModel
 
-// Downloads or Trash after the separator, one copy per output.
+// The app drawer button (first in the dock), or Downloads / Trash after the
+// separator. One copy per output.
 
 Item {
   id: specialWrapper
@@ -43,15 +44,18 @@ Item {
     hitHeight: dock.vertical ? dock.effSlotWidth + dock.slotSpacing : dock.iconSize
     anchors.centerIn: parent
     draggable: false
-    itemData: specialWrapper.specialId === "downloads"
+    itemData: specialWrapper.specialId === "launcher"
+      ? ({ id: "launcher", name: dock.t("special.launcher"), icon: "view-app-grid", pinned: false, running: false, special: true })
+      : specialWrapper.specialId === "downloads"
       ? ({ id: "downloads", name: dock.t("special.downloads"), icon: "folder-download", pinned: false, running: false, special: true })
       : ({ id: "trash", name: dock.t("special.trash"), icon: dock.trashFull ? "user-trash-full" : "user-trash", pinned: false, running: false, special: true })
     iconSize: dock.iconSize
     dockSide: dock.dockSide
     animationEnabled: specialWrapper.animating && dock.layoutTransition
-    iconSourceOverride: ""
+    iconSourceOverride: specialWrapper.specialId === "launcher" ? Qt.resolvedUrl("assets/app-drawer.svg") : ""
     onItemLeftClicked: function(clickedItem) {
-      if (specialWrapper.specialId === "downloads") dock.openDownloads()
+      if (specialWrapper.specialId === "launcher") dock.toggleAppDrawer()
+      else if (specialWrapper.specialId === "downloads") dock.openDownloads()
       else dock.openTrash()
     }
     onItemRightClicked: function(clickedItem, position) { dock.openMenu(clickedItem, position) }

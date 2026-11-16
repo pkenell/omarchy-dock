@@ -65,5 +65,11 @@
   "picker.iconsFound": {
     "one": "%1 ikon hittades",
     "other": "%1 ikoner hittades"
-  }
+  },
+  "special.launcher": "Appar",
+  "drawer.search": "Sök appar",
+  "drawer.noMatch": "Inga appar matchar \"%1\"",
+  "drawer.open": "Öppna",
+  "drawer.keepInDock": "Behåll i dockan",
+  "drawer.removeFromDock": "Ta bort från dockan"
 }
