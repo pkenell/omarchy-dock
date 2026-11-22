@@ -22,6 +22,8 @@ PanelWindow {
   property bool trashFull: false
   // Open windows of the app: [{ address, title, active }].
   property var windows: []
+  // How many of the app's windows "Bring windows here" would move.
+  property int bringCount: 0
   property bool dockExpanded: false
   property int currentIndex: -1
 
@@ -50,7 +52,8 @@ PanelWindow {
       var shown = (windows || []).slice(0, 8)
       for (var i = 0; i < shown.length; i++)
         rows.push(row("item", shown[i].title || itemData.name, "focusWindow", { arg: shown[i].address, checked: !!shown[i].active, mark: true }))
-      if (shown.length > 0) rows.push(row("sep"))
+      if (bringCount > 0) rows.push(row("item", strings.tn("menu.bringHere", bringCount).arg(bringCount), "bringHere"))
+      if (shown.length > 0 || bringCount > 0) rows.push(row("sep"))
       rows.push(row("item", isRunning ? strings.t("menu.newWindow") : strings.t("menu.open"), "newWindow"))
       rows.push(row("sep"))
       rows.push(row("item", itemData.pinned ? strings.t("menu.removeFromDock") : strings.t("menu.keepInDock"), "togglePin"))

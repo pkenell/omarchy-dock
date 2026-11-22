@@ -700,6 +700,32 @@ Item {
     return root.focusWindowAddress(hyprWindow.address)
   }
 
+  // "Bring windows here": the windows of an app that are on another monitor
+  // or workspace (for example left behind on the hidden monitor of an ended
+  // Gliff session), or minimized, move to the focused monitor's active
+  // workspace. Special workspaces (negative ids) are never a destination.
+  function windowsToBringHere(windows) {
+    var monitor = Hyprland.focusedMonitor
+    var target = monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : -1
+    return DockModel.windowsToBring(windows, target, monitor ? monitor.id : -1)
+  }
+
+  function bringWindowsHere(id) {
+    var monitor = Hyprland.focusedMonitor
+    var target = monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : -1
+    if (!(target >= 1)) return
+    var moved = root.windowsToBringHere(root.gatherWindowsForApp(id))
+    for (var i = 0; i < moved.length; i++) {
+      var address = moved[i].address.indexOf("0x") === 0 ? moved[i].address : "0x" + moved[i].address
+      var selector = "window = \"address:" + address + "\""
+      Hyprland.dispatch("hl.dsp.window.move({ workspace = \"" + target + "\", follow = false, " + selector + " })")
+      // A floating window keeps the old monitor's coordinates and could land
+      // outside this one.
+      if (moved[i].center) Hyprland.dispatch("hl.dsp.window.center({ " + selector + " })")
+    }
+    if (moved.length > 0) root.focusWindowAddress(moved[moved.length - 1].address)
+  }
+
   onShellChanged: if (root.shell) root.refreshApps()
 
   function refreshApps() {
@@ -1236,6 +1262,7 @@ Item {
     root.menuOpen = true
     dockMenu.itemData = item
     dockMenu.windows = (item && !item.special) ? root.gatherWindowsForApp(item.id) : []
+    dockMenu.bringCount = root.windowsToBringHere(dockMenu.windows).length
     dockMenu.requestedPosition = Qt.point(position.x, position.y)
     dockMenu.opened = true
   }
@@ -1263,6 +1290,7 @@ Item {
     if (action === "togglePin") root.pinnedIds = DockModel.togglePinned(root.pinnedIds, item.id)
     else if (action === "newWindow") handleClick({ id: item.id, name: item.name, running: false })
     else if (action === "close") closeWindow(item.id)
+    else if (action === "bringHere") bringWindowsHere(item.id)
     else if (action === "setIcon") root.openIconPicker(item.id, item.name, false, true)
     else if (action === "manageIcons") root.openIconManager(item)
     if (action === "togglePin") { refreshItems(); savePinned() }
@@ -1526,7 +1554,11 @@ Item {
           title: String(candidate.title || ""),
           active: !!(ipc.focused || candidate.focused),
           mapped: !!ipc.mapped,
-          minimized: !!ipc.minimized,
+          // Omarchy minimizes by moving a window to special:minimized;
+          // Hyprland's IPC has no minimized field of its own.
+          minimized: !!ipc.minimized || DockModel.isMinimizedWorkspace(ipc.workspace ? ipc.workspace.name : ""),
+          floating: !!ipc.floating,
+          monitorId: (ipc.monitor !== undefined && ipc.monitor !== null) ? ipc.monitor : -1,
           workspaceId: ipc.workspace ? ipc.workspace.id : -1,
           x: pos[0] || 0,
           y: pos[1] || 0,

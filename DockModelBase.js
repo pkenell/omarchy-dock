@@ -685,6 +685,41 @@ function shouldRevealDock(state) {
     return !!(s.autoHide && s.enabled && s.autoHidden && !!s.edgeHovered)
 }
 
+// ---- Bring windows here (pure, testable) --------------------------------
+// Omarchy minimizes a window by moving it to this special workspace.
+var MINIMIZED_WORKSPACE = "special:minimized"
+
+function isMinimizedWorkspace(name) {
+    return String(name || "") === MINIMIZED_WORKSPACE
+}
+
+// The windows that "Move windows here" fetches to the target workspace on the
+// target monitor: windows on another regular workspace, and minimized ones.
+// Windows already on the target workspace stay, and so do windows on other
+// special workspaces (such as the scratchpad), which were put there on
+// purpose. Each result says whether to center the window afterwards: a
+// floating window from another monitor keeps that monitor's coordinates and
+// could land outside the target monitor.
+// windows: [{ address, workspaceId, minimized, floating, monitorId }]
+function windowsToBring(windows, targetWorkspaceId, targetMonitorId) {
+    var output = []
+    if (!(targetWorkspaceId >= 1)) return output
+    var list = toArray(windows)
+    for (var i = 0; i < list.length; i++) {
+        var w = list[i]
+        if (!w || !w.address) continue
+        var minimized = !!w.minimized
+        if (!minimized) {
+            if (!(w.workspaceId >= 1)) continue
+            if (w.workspaceId === targetWorkspaceId) continue
+        }
+        var otherMonitor = w.monitorId !== undefined && w.monitorId !== null && w.monitorId >= 0
+            && targetMonitorId !== undefined && targetMonitorId !== null && w.monitorId !== targetMonitorId
+        output.push({ address: String(w.address), minimized: minimized, center: !!w.floating && otherMonitor })
+    }
+    return output
+}
+
 // Allows the same pure module to be exercised by Node tests. QML does not
 // define `module`, so this branch is inert when imported by Quickshell.
 if (typeof module !== "undefined" && module.exports) {
@@ -697,6 +732,9 @@ if (typeof module !== "undefined" && module.exports) {
         leadingSection: leadingSection,
         leadingCount: leadingCount,
         LAYOUT_OPTS: LAYOUT_OPTS,
+        MINIMIZED_WORKSPACE: MINIMIZED_WORKSPACE,
+        isMinimizedWorkspace: isMinimizedWorkspace,
+        windowsToBring: windowsToBring,
         normalizeId: normalizeId,
         mergeAppEntries: mergeAppEntries,
         stripDesktop: stripDesktop,
