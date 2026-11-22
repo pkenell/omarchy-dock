@@ -27,6 +27,10 @@
   "settings.solid": "Solid",
   "settings.reset": "Reset",
   "settings.done": "Done",
+  "menu.bringHere": {
+    "one": "Bring window here",
+    "other": "Bring %1 windows here"
+  },
   "menu.closeAll": "Close All Windows",
   "menu.emptyTrash": "Empty Trash",
   "special.downloads": "Downloads",

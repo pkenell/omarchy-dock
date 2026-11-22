@@ -20,6 +20,9 @@ Buggar och funktioner följs som issues på https://github.com/pkenell/omarchy-d
 - [ ] Fler språk än engelska och svenska (`i18n/en.json`, `i18n/sv.json`). Nya nycklar
   måste läggas till i alla språkfiler.
 - [ ] Fönstertitlar i menyn: begränsa längd och antal (idag max 8, elidering).
+- [ ] **Hämta fönster hit**: högerklick på en programikon flyttar programmets fönster
+  från andra skärmar och arbetsytor (till exempel efter en Gliff-session) till den
+  aktiva arbetsytan. Se `HANDOVER-hamta-fonster.md`.
 
 ## Uppdelning av `DockPanelBase.qml` (2 208 rader kvar)
 

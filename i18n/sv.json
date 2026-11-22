@@ -12,6 +12,10 @@
   "menu.left": "Vänster",
   "menu.right": "Höger",
   "menu.settings": "Dockinställningar…",
+  "menu.bringHere": {
+    "one": "Hämta fönster hit",
+    "other": "Hämta %1 fönster hit"
+  },
   "menu.closeAll": "Stäng alla fönster",
   "menu.emptyTrash": "Töm papperskorgen",
   "settings.title": "Dockinställningar",

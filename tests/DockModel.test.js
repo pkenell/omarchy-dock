@@ -659,3 +659,45 @@ test("hoverEffect and magnifyReach: defaults, normalization, clamping, round tri
   assert.equal(out.magnifyReach, 120)
   assert.equal(JSON.parse(model.serializeSettings({})).hoverEffect, "magnify")
 })
+
+test("windowsToBring picks windows on other workspaces and minimized ones", () => {
+  const windows = [
+    { address: "0xa", workspaceId: 3, monitorId: 0 },
+    { address: "0xb", workspaceId: 5, monitorId: 0 },
+    { address: "0xc", workspaceId: -99, minimized: true, monitorId: 0 },
+    { address: "0xd", workspaceId: -98, monitorId: 0 },
+    { address: "", workspaceId: 7, monitorId: 0 },
+  ]
+  const result = JSON.parse(JSON.stringify(model.windowsToBring(windows, 3, 0)))
+  assert.deepEqual(result, [
+    { address: "0xb", minimized: false, center: false },
+    { address: "0xc", minimized: true, center: false },
+  ])
+})
+
+test("windowsToBring centers floating windows from another monitor", () => {
+  const windows = [
+    { address: "0xa", workspaceId: 12, monitorId: 2, floating: true },
+    { address: "0xb", workspaceId: 12, monitorId: 2, floating: false },
+    { address: "0xc", workspaceId: 4, monitorId: 0, floating: true },
+    { address: "0xd", workspaceId: 13, floating: true },
+  ]
+  const result = JSON.parse(JSON.stringify(model.windowsToBring(windows, 1, 0)))
+  assert.deepEqual(result.map((w) => [w.address, w.center]), [
+    ["0xa", true], ["0xb", false], ["0xc", false], ["0xd", false],
+  ])
+})
+
+test("windowsToBring returns nothing when there is nothing to bring", () => {
+  assert.deepEqual(Array.from(model.windowsToBring([], 1, 0)), [])
+  assert.deepEqual(Array.from(model.windowsToBring(null, 1, 0)), [])
+  assert.deepEqual(Array.from(model.windowsToBring([{ address: "0xa", workspaceId: 1 }], 1, 0)), [])
+  // Special target workspaces (negative ids) are never a destination.
+  assert.deepEqual(Array.from(model.windowsToBring([{ address: "0xa", workspaceId: 2 }], -99, 0)), [])
+})
+
+test("isMinimizedWorkspace matches Omarchy's minimized workspace only", () => {
+  assert.equal(model.isMinimizedWorkspace("special:minimized"), true)
+  assert.equal(model.isMinimizedWorkspace("special:scratchpad"), false)
+  assert.equal(model.isMinimizedWorkspace(undefined), false)
+})
