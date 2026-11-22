@@ -1,8 +1,7 @@
 # Överlämning: "Hämta fönster hit" i dockmenyn
 
-Status: byggt på grenen `feat/bring-windows-here` (2026-11-22). Enhetstesterna går igenom
-och dispatcherna är provade i en nästlad Hyprland. Kvar: prova i menyn på riktigt och i
-Gliff-scenariot (se Test).
+Status: klart och sammanslaget med `main` (2026-11-22). Provat i menyn mellan arbetsytor.
+Kvar: Gliff-scenariot på riktigt (se Test), när fönster hamnar på en skärm som inte finns.
 
 Beslut som togs när funktionen byggdes:
 
