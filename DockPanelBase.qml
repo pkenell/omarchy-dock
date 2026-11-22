@@ -402,6 +402,28 @@ Item {
   // carries the intent for delegates that do not exist yet).
   property var bouncingIds: []
 
+  // Omarchy's own menu ("Apps") and Super+Alt+Space call
+  // `omarchy-shell omarchy.dock apps`. When the built-in dock is switched off
+  // in favour of this one nothing answers that target, so answer it here.
+  // Starts disabled and only claims the target once the shell has had time to
+  // load every plugin and nobody else holds it, so the built-in dock still
+  // wins when it is running.
+  ShellIpc {
+    id: builtinDockAlias
+    target: "omarchy.dock"
+    enabled: false
+    function apps(): void { root.toggleAppDrawer() }
+    // Layout commands call this on the built-in dock; nothing to refresh here.
+    function refresh(): void {}
+  }
+
+  Timer {
+    interval: 3000
+    running: true
+    repeat: false
+    onTriggered: builtinDockAlias.enabled = IpcRegistry.handlerFor("omarchy.dock") === null
+  }
+
   IpcHandler {
     target: "macos.dock"
     function toggle() { root.enabled = !root.enabled }
